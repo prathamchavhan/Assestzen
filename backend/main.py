@@ -74,7 +74,7 @@ async def process_image(
             file_path = os.path.join(STATIC_DIR, unique_filename)
             with open(file_path, "wb") as f:
                 f.write(current_bytes)
-            url = f"http://localhost:8000/static/{unique_filename}"
+            url = f"https://assestzen.onrender.com/static/{unique_filename}"
             return JSONResponse(content={"url": url, "filename": unique_filename, "processed": True})
 
         return StreamingResponse(
@@ -129,7 +129,7 @@ async def upload_url(file: UploadFile = File(...)):
         with open(file_path, "wb") as f:
             f.write(image_bytes)
             
-        url = f"http://localhost:8000/static/{unique_filename}"
+        url = f"https://assestzen.onrender.com/static/{unique_filename}"
         return JSONResponse(content={"url": url, "filename": unique_filename})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
