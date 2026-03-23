@@ -6,12 +6,12 @@ from PIL import Image
 from rembg import remove, new_session
 import uuid
 
-# Load a highly accurate model for sophisticated background removal
-# isnet-general-use performs significantly better on tricky edges than standard u2net.
-bg_session = new_session("isnet-general-use")
+# Load the highly optimized and lightweight u2netp model for edge deployments
+# u2netp uses ~4MB of RAM making it perfect for 512MB Free Tier limits.
+bg_session = new_session("u2netp")
 
 def process_background_removal(image_bytes: bytes) -> bytes:
-    """Removes background using highly accurate ISNet model"""
+    """Removes background using highly optimized u2netp model"""
     return remove(image_bytes, session=bg_session)
 
 def convert_image_format(image: Image.Image, target_format: str) -> bytes:
