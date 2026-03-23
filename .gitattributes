@@ -1,0 +1,5 @@
+# Ignore generated or common UI components from GitHub repository language statistics
+frontend/src/components/ui/** linguist-vendored
+frontend/postcss.config.mjs linguist-vendored
+frontend/tailwind.config.ts linguist-vendored
+frontend/package-lock.json linguist-vendored
