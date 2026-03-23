@@ -25,7 +25,7 @@ def convert_image_format(image: Image.Image, target_format: str) -> bytes:
         # Check if Pillow has AVIF support natively
         try:
             image.save(out, format="AVIF")
-        except ValueError:
+        except Exception:
             # Fallback to FFmpeg
             with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_in:
                 if image.mode in ("RGBA", "P"):
