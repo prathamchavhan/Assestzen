@@ -1,5 +1,15 @@
-import io
 import os
+# Must set ONNX/OpenMP thread limits BEFORE importing rembg/onnxruntime
+# to prevent massive memory overallocation on shared Render hosts (OOM fix)
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
+os.environ["OMPI_NUM_THREADS"] = "1"
+
+import io
 import tempfile
 import subprocess
 from PIL import Image
