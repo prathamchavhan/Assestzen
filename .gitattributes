@@ -1,5 +1,7 @@
-# Ignore generated or common UI components from GitHub repository language statistics
-frontend/src/components/ui/** linguist-vendored
-frontend/postcss.config.mjs linguist-vendored
-frontend/tailwind.config.ts linguist-vendored
-frontend/package-lock.json linguist-vendored
+# Force GitHub to ignore all TypeScript, config mapping, and JavaScript files to make Python the dominant language
+*.ts linguist-vendored
+*.tsx linguist-vendored
+*.js linguist-vendored
+*.mjs linguist-vendored
+frontend/** linguist-vendored
+package-lock.json linguist-vendored
