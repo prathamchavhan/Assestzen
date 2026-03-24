@@ -85,7 +85,17 @@ export default function Home() {
         }
       } catch (e: any) {
         console.error(e);
-        processedFiles.push({ file, oldSize: file.size, name: file.name, error: "Processing failed. Check API." });
+        let errMsg = "Processing failed. Check API.";
+        if (e.response && e.response.data && e.response.data.detail) {
+          errMsg = `API Error: ${e.response.data.detail}`;
+        }
+        if (e.response && e.response.data && e.response.data.trace) {
+          console.error("Backend Trace:", e.response.data.trace);
+          // Show the last line of the python stack trace
+          const lines = e.response.data.trace.trim().split('\n');
+          errMsg = lines[lines.length - 1].substring(0, 100);
+        }
+        processedFiles.push({ file, oldSize: file.size, name: file.name, error: errMsg });
       }
       setGlobalProgress(((i + 1) / files.length) * 100);
     }

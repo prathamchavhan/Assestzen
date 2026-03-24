@@ -83,7 +83,9 @@ async def process_image(
             headers={"Content-Disposition": f"attachment; filename={final_filename}"}
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        err_str = traceback.format_exc()
+        return JSONResponse(status_code=500, content={"detail": str(e), "trace": err_str})
 
 @app.post("/process-video")
 async def process_video(
@@ -117,7 +119,9 @@ async def process_video(
             headers={"Content-Disposition": f"attachment; filename={final_filename}"}
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        err_str = traceback.format_exc()
+        return JSONResponse(status_code=500, content={"detail": str(e), "trace": err_str})
 
 @app.post("/upload-url")
 async def upload_url(file: UploadFile = File(...)):
@@ -132,7 +136,9 @@ async def upload_url(file: UploadFile = File(...)):
         url = f"https://assestzen.onrender.com/static/{unique_filename}"
         return JSONResponse(content={"url": url, "filename": unique_filename})
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        err_str = traceback.format_exc()
+        return JSONResponse(status_code=500, content={"detail": str(e), "trace": err_str})
 
 if __name__ == "__main__":
     import uvicorn
