@@ -22,6 +22,18 @@ bg_session = new_session("u2netp")
 
 def process_background_removal(image_bytes: bytes) -> bytes:
     """Removes background using highly optimized u2netp model"""
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        max_dim = 1024
+        if max(img.size) > max_dim:
+            img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+            out = io.BytesIO()
+            img.save(out, format="PNG")
+            image_bytes = out.getvalue()
+    except Exception as e:
+        print(f"Bypass downscale err: {e}")
+        pass
+
     return remove(image_bytes, session=bg_session)
 
 def convert_image_format(image: Image.Image, target_format: str) -> bytes:
