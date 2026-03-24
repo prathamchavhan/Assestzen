@@ -34,7 +34,7 @@ export default function Home() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      setFiles(Array.from(e.dataTransfer.files));
+      setFiles(prev => [...prev, ...Array.from(e.dataTransfer.files!)]);
     }
   };
 
@@ -224,9 +224,10 @@ export default function Home() {
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
+              onClick={() => document.getElementById('hidden-file-input')?.click()}
               className="relative group border-2 border-dashed border-black/20 dark:border-white/20 rounded-[2rem] bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-500 p-12 text-center flex flex-col items-center justify-center min-h-[380px] cursor-pointer"
             >
-              <input type="file" multiple className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={(e) => e.target.files && setFiles(Array.from(e.target.files))} />
+              <input id="hidden-file-input" type="file" multiple className="hidden" onChange={(e) => e.target.files && setFiles(prev => [...prev, ...Array.from(e.target.files!)])} />
 
               <div className="w-24 h-24 rounded-3xl bg-black dark:bg-white shadow-xl flex items-center justify-center mb-8 group-hover:-translate-y-3 transition-transform duration-500 border border-black/10 dark:border-white/10">
                 <UploadCloud className="w-10 h-10 text-white dark:text-black" />
