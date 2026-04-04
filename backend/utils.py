@@ -20,20 +20,26 @@ import uuid
 # u2netp uses ~4MB of RAM making it perfect for 512MB Free Tier limits.
 bg_session = new_session("u2netp")
 
-def process_background_removal(image_bytes: bytes) -> bytes:
-    """Removes background using highly optimized u2netp model"""
+
+def downscale_image(image_bytes: bytes, max_dim: int = 2048) -> bytes:
+    """Pre-downscale large images to speed up all processing."""
     try:
         img = Image.open(io.BytesIO(image_bytes))
-        max_dim = 1024
         if max(img.size) > max_dim:
             img.thumbnail((max_dim, max_dim), Image.LANCZOS)
             out = io.BytesIO()
-            img.save(out, format="PNG")
-            image_bytes = out.getvalue()
-    except Exception as e:
-        print(f"Bypass downscale err: {e}")
+            fmt = "PNG" if img.mode == "RGBA" else "JPEG"
+            img.save(out, format=fmt, quality=90)
+            return out.getvalue()
+    except Exception:
         pass
+    return image_bytes
 
+
+def process_background_removal(image_bytes: bytes) -> bytes:
+    """Removes background using highly optimized u2netp model"""
+    # Downscale to 1024 for bg removal (faster inference)
+    image_bytes = downscale_image(image_bytes, max_dim=1024)
     return remove(image_bytes, session=bg_session)
 
 def convert_image_format(image: Image.Image, target_format: str) -> bytes:
@@ -72,7 +78,9 @@ def convert_image_format(image: Image.Image, target_format: str) -> bytes:
     return out.getvalue()
 
 def compress_image(image_bytes: bytes, target_size_kb: float, fmt: str) -> bytes:
-    """Iteratively compresses an image to reach the target size, respecting min quality."""
+    """Fast image compression with limited iterations for speed."""
+    # Pre-downscale to reduce processing time
+    image_bytes = downscale_image(image_bytes, max_dim=2048)
     target_bytes = target_size_kb * 1024
     image = Image.open(io.BytesIO(image_bytes))
     
@@ -89,43 +97,44 @@ def compress_image(image_bytes: bytes, target_size_kb: float, fmt: str) -> bytes
     if image.mode in ("RGBA", "P") and fmt == "JPEG":
         image = image.convert("RGB")
 
-    min_q = 30
-    max_q = 95
-    
+    # Fast path: try quality 85 first
     out = io.BytesIO()
-    image.save(out, format=fmt, quality=max_q)
+    image.save(out, format=fmt, quality=85)
     if len(out.getvalue()) <= target_bytes:
         return out.getvalue()
 
-    low = min_q
-    high = max_q
-    closest_output = None
-    
-    while low <= high:
+    # Quick binary search — max 5 iterations instead of ~7
+    low, high = 20, 80
+    best = None
+    for _ in range(5):
+        if low > high:
+            break
         mid = (low + high) // 2
-        temp_out = io.BytesIO()
-        image.save(temp_out, format=fmt, quality=mid)
-        size = len(temp_out.getvalue())
-
-        if size <= target_bytes:
-            closest_output = temp_out.getvalue()
-            low = mid + 1  # Try higher quality
+        temp = io.BytesIO()
+        image.save(temp, format=fmt, quality=mid)
+        if len(temp.getvalue()) <= target_bytes:
+            best = temp.getvalue()
+            low = mid + 1
         else:
             high = mid - 1
-            
-    if closest_output:
-        return closest_output
+
+    if best:
+        return best
     
-    final_out = io.BytesIO()
-    image.save(final_out, format=fmt, quality=min_q)
-    return final_out.getvalue()
+    final = io.BytesIO()
+    image.save(final, format=fmt, quality=20)
+    return final.getvalue()
 
 def compress_video_ffmpeg(input_path: str, crf: int) -> str:
-    """Compresses video using FFmpeg and H.264 codec."""
+    """Compresses video using FFmpeg with ultrafast preset for speed."""
     output_path = input_path.replace(".mp4", f"_{uuid.uuid4().hex[:6]}_compressed.mp4")
     cmd = [
         "ffmpeg", "-y", "-i", input_path,
-        "-vcodec", "libx264", "-crf", str(crf),
+        "-vcodec", "libx264",
+        "-preset", "ultrafast",     # 3-5x faster encoding
+        "-tune", "fastdecode",      # Optimized for fast playback
+        "-crf", str(crf),
+        "-movflags", "+faststart",  # Progressive loading
         output_path
     ]
     subprocess.run(cmd, capture_output=True)
@@ -136,8 +145,10 @@ def compress_video_ffmpeg(input_path: str, crf: int) -> str:
 
 import qrcode
 from pyzbar.pyzbar import decode as pyzbar_decode
+from functools import lru_cache
 
 
+@lru_cache(maxsize=256)
 def generate_qr_code(data: str) -> bytes:
     """Generate a high-quality QR code PNG from a string (URL or text)."""
     qr = qrcode.QRCode(

@@ -1,17 +1,22 @@
 import os
 import io
 import uuid
+import asyncio
 import tempfile
 import zipfile
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
 import utils
 
 app = FastAPI(title="OptiMedia AI API")
+
+# GZip compression for all responses > 500 bytes
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # Configure CORS for Next.js frontend
 app.add_middleware(
@@ -46,20 +51,20 @@ async def process_image(
         
         action_list = [a.strip() for a in action.split(",")]
         
-        # 1. Background Removal
+        # 1. Background Removal (offloaded to thread pool)
         if "Remove Background" in action_list or "All-in-One (BG + Compress + Convert)" in action:
-            current_bytes = utils.process_background_removal(current_bytes)
+            current_bytes = await asyncio.to_thread(utils.process_background_removal, current_bytes)
             current_format = "PNG"
             
-        # 2. Convert Format
+        # 2. Convert Format (offloaded to thread pool)
         if ("Convert Format" in action_list or "Convert to URL" in action_list or "All-in-One (BG + Compress + Convert)" in action) and target_format != "Original":
             img = Image.open(io.BytesIO(current_bytes))
-            current_bytes = utils.convert_image_format(img, target_format)
+            current_bytes = await asyncio.to_thread(utils.convert_image_format, img, target_format)
             current_format = target_format if target_format != "JPG" else "JPEG"
             
-        # 3. Compress
+        # 3. Compress (offloaded to thread pool)
         if "Compress" in action_list or "Convert to URL" in action_list or "All-in-One (BG + Compress + Convert)" in action:
-            current_bytes = utils.compress_image(current_bytes, target_size_kb, current_format)
+            current_bytes = await asyncio.to_thread(utils.compress_image, current_bytes, target_size_kb, current_format)
             
         ext_map = {"JPEG": "jpg", "JPG": "jpg", "PNG": "png", "WEBP": "webp", "AVIF": "avif"}
         final_ext = ext_map.get(current_format, file_ext)
@@ -102,7 +107,8 @@ async def process_video(
             tmp.write(image_bytes)
             tmp_path = tmp.name
         
-        out_path = utils.compress_video_ffmpeg(tmp_path, crf)
+        # Offload video compression to thread pool
+        out_path = await asyncio.to_thread(utils.compress_video_ffmpeg, tmp_path, crf)
         
         with open(out_path, "rb") as f:
             processed_bytes = f.read()
@@ -161,7 +167,8 @@ async def generate_qr(
         if not qr_data:
             return JSONResponse(status_code=400, content={"detail": "Provide text/URL or upload a file."})
 
-        qr_bytes = utils.generate_qr_code(qr_data)
+        # Offload QR generation to thread pool (cached via LRU)
+        qr_bytes = await asyncio.to_thread(utils.generate_qr_code, qr_data)
 
         return StreamingResponse(
             io.BytesIO(qr_bytes),
@@ -178,7 +185,8 @@ async def decode_qr(file: UploadFile = File(...)):
     """Decode a QR code image and return the embedded text/URL."""
     try:
         image_bytes = await file.read()
-        decoded_text = utils.decode_qr_code(image_bytes)
+        # Offload QR decoding to thread pool
+        decoded_text = await asyncio.to_thread(utils.decode_qr_code, image_bytes)
         return JSONResponse(content={"decoded_text": decoded_text})
     except ValueError as e:
         return JSONResponse(status_code=400, content={"detail": str(e)})
@@ -190,4 +198,3 @@ async def decode_qr(file: UploadFile = File(...)):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-

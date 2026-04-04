@@ -1,15 +1,340 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
-import { UploadCloud, CheckCircle, Download, Link as LinkIcon, Image as ImageIcon, Video, Loader2, Trash2, Moon, Sun, MonitorPlay, QrCode, ScanLine, Copy, ExternalLink } from 'lucide-react';
+import { UploadCloud, CheckCircle, Download, Link as LinkIcon, Image as ImageIcon, Video, Loader2, Trash2, Moon, Sun, MonitorPlay, QrCode, ScanLine, Copy, ExternalLink, Brain, Zap, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { processImage, processVideo, generateQR, decodeQR } from '@/lib/api';
 import { useTheme } from 'next-themes';
+
+// ─── Math Challenge Mini-Game Component ───
+function MathGame({ compact = false }: { compact?: boolean }) {
+  const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [question, setQuestion] = useState({ text: '', answer: 0 });
+  const [userAnswer, setUserAnswer] = useState('');
+  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [questionCount, setQuestionCount] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const generateQuestion = useCallback(() => {
+    const types = [
+      'percentage', 'square', 'cube', 'sqrt', 'lcm', 'hcf',
+      'series', 'profitLoss', 'ratio', 'average', 'remainder',
+      'power', 'speedTime', 'simplify', 'factorial', 'modular'
+    ];
+    const type = types[Math.floor(Math.random() * types.length)];
+    let text = '', answer = 0;
+
+    const gcd = (x: number, y: number): number => y === 0 ? x : gcd(y, x % y);
+    const lcm = (x: number, y: number): number => (x * y) / gcd(x, y);
+
+    switch (type) {
+      case 'percentage': {
+        const percents = [10, 15, 20, 25, 30, 40, 50, 60, 75];
+        const p = percents[Math.floor(Math.random() * percents.length)];
+        const bases = [80, 120, 150, 200, 250, 300, 400, 500, 600, 800];
+        const base = bases[Math.floor(Math.random() * bases.length)];
+        text = `${p}% of ${base} = ?`;
+        answer = (p * base) / 100;
+        break;
+      }
+      case 'square': {
+        const n = Math.floor(Math.random() * 25) + 6;
+        text = `${n}² = ?`;
+        answer = n * n;
+        break;
+      }
+      case 'cube': {
+        const n = Math.floor(Math.random() * 10) + 3;
+        text = `${n}³ = ?`;
+        answer = n * n * n;
+        break;
+      }
+      case 'sqrt': {
+        const roots = [4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144, 169, 196, 225, 256, 289, 324, 361, 400, 441, 484, 529, 576, 625];
+        const sq = roots[Math.floor(Math.random() * roots.length)];
+        text = `√${sq} = ?`;
+        answer = Math.sqrt(sq);
+        break;
+      }
+      case 'lcm': {
+        const a = Math.floor(Math.random() * 12) + 4;
+        const b = Math.floor(Math.random() * 12) + 4;
+        text = `LCM of ${a} and ${b} = ?`;
+        answer = lcm(a, b);
+        break;
+      }
+      case 'hcf': {
+        const a = Math.floor(Math.random() * 30) + 12;
+        const b = Math.floor(Math.random() * 30) + 12;
+        text = `HCF of ${a} and ${b} = ?`;
+        answer = gcd(a, b);
+        break;
+      }
+      case 'series': {
+        // Arithmetic progression — find the next number
+        const start = Math.floor(Math.random() * 10) + 1;
+        const diff = Math.floor(Math.random() * 8) + 2;
+        const terms = [start, start + diff, start + 2 * diff, start + 3 * diff];
+        text = `${terms.join(', ')}, ? (next)`;
+        answer = start + 4 * diff;
+        break;
+      }
+      case 'profitLoss': {
+        const cp = [100, 150, 200, 250, 300, 400, 500][Math.floor(Math.random() * 7)];
+        const profitPct = [10, 15, 20, 25, 30, 40, 50][Math.floor(Math.random() * 7)];
+        text = `CP = ₹${cp}, Profit = ${profitPct}%. SP = ?`;
+        answer = cp + (cp * profitPct) / 100;
+        break;
+      }
+      case 'ratio': {
+        const r1 = Math.floor(Math.random() * 5) + 2;
+        const r2 = Math.floor(Math.random() * 5) + 2;
+        const total = (r1 + r2) * (Math.floor(Math.random() * 8) + 3);
+        text = `Divide ${total} in ratio ${r1}:${r2}. Larger part = ?`;
+        const larger = Math.max(r1, r2);
+        answer = (total * larger) / (r1 + r2);
+        break;
+      }
+      case 'average': {
+        const count = Math.floor(Math.random() * 3) + 3;
+        const nums: number[] = [];
+        for (let i = 0; i < count; i++) nums.push(Math.floor(Math.random() * 30) + 5);
+        const sum = nums.reduce((a, b) => a + b, 0);
+        // Ensure clean average
+        const remainder = sum % count;
+        if (remainder !== 0) nums[0] += (count - remainder);
+        const cleanSum = nums.reduce((a, b) => a + b, 0);
+        text = `Average of ${nums.join(', ')} = ?`;
+        answer = cleanSum / count;
+        break;
+      }
+      case 'remainder': {
+        const divisor = Math.floor(Math.random() * 8) + 3;
+        const quotient = Math.floor(Math.random() * 20) + 5;
+        const rem = Math.floor(Math.random() * (divisor - 1)) + 1;
+        const dividend = divisor * quotient + rem;
+        text = `${dividend} ÷ ${divisor} → remainder = ?`;
+        answer = rem;
+        break;
+      }
+      case 'power': {
+        const base = Math.floor(Math.random() * 6) + 2;
+        const exp = Math.floor(Math.random() * 4) + 2;
+        text = `${base}^${exp} = ?`;
+        answer = Math.pow(base, exp);
+        break;
+      }
+      case 'speedTime': {
+        const speeds = [20, 30, 40, 50, 60, 80];
+        const speed = speeds[Math.floor(Math.random() * speeds.length)];
+        const times = [2, 3, 4, 5, 6];
+        const time = times[Math.floor(Math.random() * times.length)];
+        text = `Speed=${speed}km/h, Time=${time}hrs. Distance=?`;
+        answer = speed * time;
+        break;
+      }
+      case 'simplify': {
+        const a = Math.floor(Math.random() * 20) + 5;
+        const b = Math.floor(Math.random() * 15) + 3;
+        const c = Math.floor(Math.random() * 10) + 2;
+        text = `${a} + ${b} × ${c} = ? (BODMAS)`;
+        answer = a + b * c;
+        break;
+      }
+      case 'factorial': {
+        const n = Math.floor(Math.random() * 5) + 3;
+        let fact = 1;
+        for (let i = 2; i <= n; i++) fact *= i;
+        text = `${n}! = ?`;
+        answer = fact;
+        break;
+      }
+      case 'modular': {
+        const base = Math.floor(Math.random() * 50) + 20;
+        const mod = Math.floor(Math.random() * 8) + 3;
+        text = `${base} mod ${mod} = ?`;
+        answer = base % mod;
+        break;
+      }
+      default: {
+        text = '15 + 27 = ?';
+        answer = 42;
+      }
+    }
+
+    setQuestion({ text, answer });
+    setUserAnswer('');
+    setFeedback(null);
+    setQuestionCount(prev => prev + 1);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, []);
+
+  useEffect(() => {
+    generateQuestion();
+  }, [generateQuestion]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = parseInt(userAnswer);
+    if (isNaN(parsed)) return;
+
+    if (parsed === question.answer) {
+      setFeedback('correct');
+      setScore(prev => prev + 10);
+      setStreak(prev => {
+        const newStreak = prev + 1;
+        setBestStreak(best => Math.max(best, newStreak));
+        return newStreak;
+      });
+    } else {
+      setFeedback('wrong');
+      setStreak(0);
+    }
+
+    setTimeout(() => generateQuestion(), 600);
+  };
+
+  if (compact) {
+    return (
+      <div className="w-full">
+        <div className="flex items-center gap-2 mb-3">
+          <Brain size={16} className="text-black/50 dark:text-white/50" />
+          <span className="text-xs font-bold tracking-widest text-black/50 dark:text-white/50 uppercase">Brain Teaser</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-lg font-black">{question.text} = ?</span>
+          <form onSubmit={handleSubmit} className="flex gap-2 flex-1">
+            <input
+              ref={inputRef}
+              type="number"
+              value={userAnswer}
+              onChange={(e) => setUserAnswer(e.target.value)}
+              className="w-20 h-9 px-3 bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 rounded-lg text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20"
+              placeholder="?"
+            />
+            <Button type="submit" size="sm" className="h-9 px-3 rounded-lg bg-black dark:bg-white text-white dark:text-black text-xs font-bold">Go</Button>
+          </form>
+          <span className="text-xs font-bold bg-black/5 dark:bg-white/10 px-2 py-1 rounded-full">{score}pts</span>
+        </div>
+        <AnimatePresence>
+          {feedback && (
+            <motion.p
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className={`text-xs font-bold mt-2 ${feedback === 'correct' ? 'text-green-500' : 'text-red-500'}`}
+            >
+              {feedback === 'correct' ? '✓ Correct!' : `✗ Answer: ${question.answer}`}
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className="w-full"
+    >
+      <div className="bg-white dark:bg-black rounded-3xl border border-black/10 dark:border-white/10 shadow-xl overflow-hidden">
+        {/* Header */}
+        <div className="bg-black dark:bg-white px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Brain className="w-5 h-5 text-white dark:text-black" />
+            <span className="text-white dark:text-black font-bold text-sm tracking-widest uppercase">Math Challenge</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5 text-white/70 dark:text-black/70">
+              <Zap size={14} />
+              <span className="text-xs font-bold">{streak} streak</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-white/70 dark:text-black/70">
+              <Trophy size={14} />
+              <span className="text-xs font-bold">Best: {bestStreak}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Game Body */}
+        <div className="p-8 text-center">
+          <div className="mb-2">
+            <span className="text-xs font-bold tracking-widest text-black/30 dark:text-white/30 uppercase">Question #{questionCount}</span>
+          </div>
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={questionCount}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <p className="text-5xl md:text-6xl font-black tracking-tighter mb-8">{question.text} = ?</p>
+            </motion.div>
+          </AnimatePresence>
+
+          <form onSubmit={handleSubmit} className="flex items-center justify-center gap-4 mb-6">
+            <input
+              ref={inputRef}
+              type="number"
+              value={userAnswer}
+              onChange={(e) => setUserAnswer(e.target.value)}
+              className="w-32 h-16 text-center text-2xl font-black bg-black/5 dark:bg-white/5 border-2 border-black/15 dark:border-white/15 rounded-2xl focus:outline-none focus:ring-2 focus:ring-black/30 dark:focus:ring-white/30 focus:border-black/30 dark:focus:border-white/30 transition-all"
+              placeholder="?"
+              autoFocus
+            />
+            <Button type="submit" size="lg" className="h-16 px-8 rounded-2xl bg-black dark:bg-white text-white dark:text-black font-bold text-lg shadow-lg active:scale-95 transition-transform">
+              Submit
+            </Button>
+          </form>
+
+          <AnimatePresence>
+            {feedback && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="mb-4"
+              >
+                {feedback === 'correct' ? (
+                  <span className="inline-flex items-center gap-2 text-green-600 dark:text-green-400 text-lg font-black bg-green-50 dark:bg-green-950/50 px-4 py-2 rounded-xl">
+                    <CheckCircle size={20} /> Correct! +10
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-2 text-red-500 text-lg font-black bg-red-50 dark:bg-red-950/50 px-4 py-2 rounded-xl">
+                    ✗ Answer was {question.answer}
+                  </span>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="flex items-center justify-center gap-6">
+            <div className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-5 py-3">
+              <p className="text-xs font-bold tracking-widest text-black/40 dark:text-white/40 uppercase">Score</p>
+              <p className="text-2xl font-black">{score}</p>
+            </div>
+            <div className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-5 py-3">
+              <p className="text-xs font-bold tracking-widest text-black/40 dark:text-white/40 uppercase">Solved</p>
+              <p className="text-2xl font-black">{questionCount - 1}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 
 export default function Home() {
   const { theme, setTheme } = useTheme();
@@ -45,30 +370,35 @@ export default function Home() {
     }
   };
 
+  // ─── Parallel file processing for speed ───
   const handleProcess = async () => {
     setIsProcessing(true);
     setResults([]);
-    let processedFiles = [];
+    setGlobalProgress(0);
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    let completed = 0;
+    const total = files.length;
+
+    const processOne = async (file: File, index: number) => {
       const isVideo = file.type.startsWith('video');
 
       try {
         let res;
         if (isVideo) {
           if (actions.includes("Compress")) {
-            res = await processVideo(file, videoCompLevel, (p) => setGlobalProgress((i / files.length) * 100 + (p / files.length)));
+            res = await processVideo(file, videoCompLevel, (p) => {
+              // Individual progress is harder with parallel, just track completion
+            });
             const blob = new Blob([res.data], { type: 'video/mp4' });
-            processedFiles.push({ file, blob, oldSize: file.size, newSize: blob.size, name: `compressed_${file.name}` });
+            return { file, blob, oldSize: file.size, newSize: blob.size, name: `compressed_${file.name}` };
           } else {
-            processedFiles.push({ file, oldSize: file.size, name: file.name, error: "Videos only support compression." });
+            return { file, oldSize: file.size, name: file.name, error: "Videos only support compression." };
           }
         } else {
-          res = await processImage(file, actions.join(","), targetSizeKb, targetFormat, (p) => setGlobalProgress((i / files.length) * 100 + (p / files.length)));
+          res = await processImage(file, actions.join(","), targetSizeKb, targetFormat, () => { });
 
           if (actions.includes("Convert to URL")) {
-            processedFiles.push({ file, url: res.data.url, oldSize: file.size, name: res.data.filename });
+            return { file, url: res.data.url, oldSize: file.size, name: res.data.filename };
           } else {
             const blob = new Blob([res.data]);
 
@@ -76,9 +406,7 @@ export default function Home() {
             const isBg = actions.includes("Remove Background") || actions.includes("All-in-One (BG + Compress + Convert)");
             const isConvert = actions.includes("Convert Format") || actions.includes("All-in-One (BG + Compress + Convert)");
 
-            if (isBg) {
-              finalExt = "png";
-            }
+            if (isBg) finalExt = "png";
             if (isConvert && targetFormat !== "Original") {
               const fmtMap: Record<string, string> = { "WebP": "webp", "AVIF": "avif", "PNG": "png", "JPG": "jpg" };
               finalExt = fmtMap[targetFormat] || finalExt;
@@ -86,26 +414,35 @@ export default function Home() {
 
             const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
             const fileName = `opti_${baseName}.${finalExt}`;
-
-            processedFiles.push({ file, blob, oldSize: file.size, newSize: blob.size, name: fileName });
+            return { file, blob, oldSize: file.size, newSize: blob.size, name: fileName };
           }
         }
       } catch (e: any) {
         console.error(e);
         let errMsg = "Processing failed. Check API.";
-        if (e.response && e.response.data && e.response.data.detail) {
+        if (e.response?.data?.detail) {
           errMsg = `API Error: ${e.response.data.detail}`;
         }
-        if (e.response && e.response.data && e.response.data.trace) {
+        if (e.response?.data?.trace) {
           console.error("Backend Trace:", e.response.data.trace);
-          // Show the last line of the python stack trace
           const lines = e.response.data.trace.trim().split('\n');
           errMsg = lines[lines.length - 1].substring(0, 100);
         }
-        processedFiles.push({ file, oldSize: file.size, name: file.name, error: errMsg });
+        return { file, oldSize: file.size, name: file.name, error: errMsg };
+      } finally {
+        completed++;
+        setGlobalProgress((completed / total) * 100);
       }
-      setGlobalProgress(((i + 1) / files.length) * 100);
-    }
+    };
+
+    // Fire all requests in parallel
+    const promises = files.map((file, i) => processOne(file, i));
+    const settled = await Promise.allSettled(promises);
+
+    const processedFiles = settled.map((result) => {
+      if (result.status === 'fulfilled') return result.value;
+      return { file: new File([], 'unknown'), oldSize: 0, name: 'unknown', error: 'Unexpected error' };
+    });
 
     setResults(processedFiles);
     setIsProcessing(false);
@@ -122,7 +459,6 @@ export default function Home() {
     } catch (e: any) {
       let errMsg = 'QR generation failed.';
       if (e.response?.data) {
-        // Response might be blob, try to parse
         try {
           const text = await e.response.data.text?.();
           const parsed = JSON.parse(text);
@@ -304,13 +640,15 @@ export default function Home() {
               <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 dark:from-black/0 dark:via-black/20 dark:to-black/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
             </Button>
 
+            {/* ─── Loading: Progress + Mini-Game ─── */}
             <AnimatePresence>
               {isProcessing && (
-                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-                  <div className="space-y-4 py-8 px-6 bg-white dark:bg-black rounded-3xl shadow-sm border border-black/10 dark:border-white/10">
-                    <div className="flex justify-between text-sm font-bold tracking-widest uppercase text-black/60 dark:text-white/60"><span>Working magic...</span><span>{Math.round(globalProgress)}%</span></div>
+                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
+                  <div className="space-y-4 py-6 px-6 bg-white dark:bg-black rounded-3xl shadow-sm border border-black/10 dark:border-white/10">
+                    <div className="flex justify-between text-sm font-bold tracking-widest uppercase text-black/60 dark:text-white/60"><span>Processing {files.length} file{files.length > 1 ? 's' : ''} in parallel...</span><span>{Math.round(globalProgress)}%</span></div>
                     <Progress value={globalProgress} className="h-4 bg-black/10 dark:bg-white/10 rounded-full [&>div]:bg-black dark:[&>div]:bg-white" />
                   </div>
+                  <MathGame />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -404,8 +742,8 @@ export default function Home() {
                 <button
                   onClick={() => { setQrTab('generate'); setQrResult(null); }}
                   className={`flex-1 flex items-center justify-center gap-2.5 py-5 text-sm font-bold tracking-widest uppercase transition-all ${qrTab === 'generate'
-                      ? 'bg-black text-white dark:bg-white dark:text-black'
-                      : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'
+                    ? 'bg-black text-white dark:bg-white dark:text-black'
+                    : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'
                     }`}
                 >
                   <QrCode size={18} /> Generate QR
@@ -413,8 +751,8 @@ export default function Home() {
                 <button
                   onClick={() => { setQrTab('scan'); setQrResult(null); }}
                   className={`flex-1 flex items-center justify-center gap-2.5 py-5 text-sm font-bold tracking-widest uppercase transition-all ${qrTab === 'scan'
-                      ? 'bg-black text-white dark:bg-white dark:text-black'
-                      : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'
+                    ? 'bg-black text-white dark:bg-white dark:text-black'
+                    : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'
                     }`}
                 >
                   <ScanLine size={18} /> Scan QR
@@ -500,11 +838,23 @@ export default function Home() {
                         </div>
                       </div>
                       {qrLoading && (
-                        <div className="flex items-center justify-center gap-3 py-4">
-                          <Loader2 className="h-5 w-5 animate-spin text-black/50 dark:text-white/50" />
-                          <span className="text-sm font-bold text-black/50 dark:text-white/50 tracking-widest uppercase">Decoding...</span>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-center gap-3 py-2">
+                            <Loader2 className="h-5 w-5 animate-spin text-black/50 dark:text-white/50" />
+                            <span className="text-sm font-bold text-black/50 dark:text-white/50 tracking-widest uppercase">Decoding...</span>
+                          </div>
+                          <MathGame compact />
                         </div>
                       )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* QR loading with mini-game for generate tab */}
+                <AnimatePresence>
+                  {qrLoading && qrTab === 'generate' && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="mt-6 pt-6 border-t border-black/10 dark:border-white/10">
+                      <MathGame compact />
                     </motion.div>
                   )}
                 </AnimatePresence>
