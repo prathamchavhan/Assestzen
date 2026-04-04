@@ -130,3 +130,37 @@ def compress_video_ffmpeg(input_path: str, crf: int) -> str:
     ]
     subprocess.run(cmd, capture_output=True)
     return output_path
+
+
+# --- QR Code Utilities ---
+
+import qrcode
+from pyzbar.pyzbar import decode as pyzbar_decode
+
+
+def generate_qr_code(data: str) -> bytes:
+    """Generate a high-quality QR code PNG from a string (URL or text)."""
+    qr = qrcode.QRCode(
+        version=None,  # auto-size
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+    out = io.BytesIO()
+    img.save(out, format="PNG")
+    return out.getvalue()
+
+
+def decode_qr_code(image_bytes: bytes) -> str:
+    """Decode a QR code image and return the embedded text."""
+    img = Image.open(io.BytesIO(image_bytes))
+    # Convert to grayscale for better decoding
+    img = img.convert("L")
+    results = pyzbar_decode(img)
+    if not results:
+        raise ValueError("No QR code found in the uploaded image.")
+    return results[0].data.decode("utf-8")

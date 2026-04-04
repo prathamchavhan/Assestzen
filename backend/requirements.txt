@@ -5,3 +5,5 @@ rembg[cpu]
 pillow
 ffmpeg-python
 aiofiles
+qrcode[pil]
+pyzbar

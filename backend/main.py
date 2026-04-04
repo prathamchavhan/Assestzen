@@ -140,6 +140,54 @@ async def upload_url(file: UploadFile = File(...)):
         err_str = traceback.format_exc()
         return JSONResponse(status_code=500, content={"detail": str(e), "trace": err_str})
 
+@app.post("/generate-qr")
+async def generate_qr(
+    data: str = Form(""),
+    file: UploadFile = File(None)
+):
+    """Generate a QR code from text/URL or from an uploaded image (hosts the image first)."""
+    try:
+        qr_data = data
+
+        # If a file is uploaded, host it and use the URL as the QR data
+        if file and file.filename:
+            image_bytes = await file.read()
+            unique_filename = f"{uuid.uuid4().hex[:8]}_{file.filename}"
+            file_path = os.path.join(STATIC_DIR, unique_filename)
+            with open(file_path, "wb") as f:
+                f.write(image_bytes)
+            qr_data = f"https://assestzen.onrender.com/static/{unique_filename}"
+
+        if not qr_data:
+            return JSONResponse(status_code=400, content={"detail": "Provide text/URL or upload a file."})
+
+        qr_bytes = utils.generate_qr_code(qr_data)
+
+        return StreamingResponse(
+            io.BytesIO(qr_bytes),
+            media_type="image/png",
+            headers={"Content-Disposition": "attachment; filename=qrcode.png"}
+        )
+    except Exception as e:
+        import traceback
+        err_str = traceback.format_exc()
+        return JSONResponse(status_code=500, content={"detail": str(e), "trace": err_str})
+
+@app.post("/decode-qr")
+async def decode_qr(file: UploadFile = File(...)):
+    """Decode a QR code image and return the embedded text/URL."""
+    try:
+        image_bytes = await file.read()
+        decoded_text = utils.decode_qr_code(image_bytes)
+        return JSONResponse(content={"decoded_text": decoded_text})
+    except ValueError as e:
+        return JSONResponse(status_code=400, content={"detail": str(e)})
+    except Exception as e:
+        import traceback
+        err_str = traceback.format_exc()
+        return JSONResponse(status_code=500, content={"detail": str(e), "trace": err_str})
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+

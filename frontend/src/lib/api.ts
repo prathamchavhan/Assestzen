@@ -49,3 +49,24 @@ export const processVideo = async (
         }
     });
 };
+
+export const generateQR = async (data: string, file?: File) => {
+    const formData = new FormData();
+    formData.append('data', data);
+    if (file) {
+        formData.append('file', file);
+    }
+    return apiClient.post('/generate-qr', formData, {
+        responseType: 'blob',
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+};
+
+export const decodeQR = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/decode-qr', formData, {
+        responseType: 'json',
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+};

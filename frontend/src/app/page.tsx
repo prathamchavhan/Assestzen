@@ -3,12 +3,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
-import { UploadCloud, CheckCircle, Download, Link as LinkIcon, Image as ImageIcon, Video, Loader2, Trash2, Moon, Sun, MonitorPlay } from 'lucide-react';
+import { UploadCloud, CheckCircle, Download, Link as LinkIcon, Image as ImageIcon, Video, Loader2, Trash2, Moon, Sun, MonitorPlay, QrCode, ScanLine, Copy, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { processImage, processVideo } from '@/lib/api';
+import { processImage, processVideo, generateQR, decodeQR } from '@/lib/api';
 import { useTheme } from 'next-themes';
 
 export default function Home() {
@@ -23,6 +23,13 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [globalProgress, setGlobalProgress] = useState(0);
   const [results, setResults] = useState<{ file: File, url?: string, blob?: Blob, oldSize: number, newSize?: number, name: string, error?: string }[]>([]);
+
+  // QR Code state
+  const [qrTab, setQrTab] = useState<'generate' | 'scan'>('generate');
+  const [qrInput, setQrInput] = useState('');
+  const [qrFile, setQrFile] = useState<File | null>(null);
+  const [qrResult, setQrResult] = useState<{ blob?: Blob; text?: string; error?: string } | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
 
   const headerRef = useRef(null);
 
@@ -103,6 +110,44 @@ export default function Home() {
     setResults(processedFiles);
     setIsProcessing(false);
     setGlobalProgress(100);
+  };
+
+  const handleGenerateQR = async () => {
+    setQrLoading(true);
+    setQrResult(null);
+    try {
+      const res = await generateQR(qrInput, qrFile || undefined);
+      const blob = new Blob([res.data], { type: 'image/png' });
+      setQrResult({ blob });
+    } catch (e: any) {
+      let errMsg = 'QR generation failed.';
+      if (e.response?.data) {
+        // Response might be blob, try to parse
+        try {
+          const text = await e.response.data.text?.();
+          const parsed = JSON.parse(text);
+          errMsg = parsed.detail || errMsg;
+        } catch { /* ignore */ }
+      }
+      setQrResult({ error: errMsg });
+    }
+    setQrLoading(false);
+  };
+
+  const handleDecodeQR = async (file: File) => {
+    setQrLoading(true);
+    setQrResult(null);
+    try {
+      const res = await decodeQR(file);
+      setQrResult({ text: res.data.decoded_text });
+    } catch (e: any) {
+      let errMsg = 'QR decoding failed.';
+      if (e.response?.data?.detail) {
+        errMsg = e.response.data.detail;
+      }
+      setQrResult({ error: errMsg });
+    }
+    setQrLoading(false);
   };
 
   return (
@@ -334,6 +379,200 @@ export default function Home() {
 
           </motion.div>
         </div>
+
+        {/* ─── QR Code Tools Section ─── */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-20"
+        >
+          <div className="flex items-center gap-4 mb-10">
+            <div className="w-14 h-14 rounded-2xl bg-black dark:bg-white flex items-center justify-center shadow-lg">
+              <QrCode className="w-7 h-7 text-white dark:text-black" />
+            </div>
+            <div>
+              <h2 className="text-3xl md:text-4xl font-black tracking-tight">QR Code Tools</h2>
+              <p className="text-black/50 dark:text-white/50 font-medium mt-1">Generate or scan QR codes instantly.</p>
+            </div>
+          </div>
+
+          <Card className="border border-black/10 dark:border-white/10 shadow-xl bg-white dark:bg-black rounded-3xl overflow-hidden">
+            <CardContent className="p-0">
+              {/* Tabs */}
+              <div className="flex border-b border-black/10 dark:border-white/10">
+                <button
+                  onClick={() => { setQrTab('generate'); setQrResult(null); }}
+                  className={`flex-1 flex items-center justify-center gap-2.5 py-5 text-sm font-bold tracking-widest uppercase transition-all ${qrTab === 'generate'
+                      ? 'bg-black text-white dark:bg-white dark:text-black'
+                      : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'
+                    }`}
+                >
+                  <QrCode size={18} /> Generate QR
+                </button>
+                <button
+                  onClick={() => { setQrTab('scan'); setQrResult(null); }}
+                  className={`flex-1 flex items-center justify-center gap-2.5 py-5 text-sm font-bold tracking-widest uppercase transition-all ${qrTab === 'scan'
+                      ? 'bg-black text-white dark:bg-white dark:text-black'
+                      : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'
+                    }`}
+                >
+                  <ScanLine size={18} /> Scan QR
+                </button>
+              </div>
+
+              <div className="p-8">
+                <AnimatePresence mode="wait">
+                  {qrTab === 'generate' ? (
+                    <motion.div key="generate" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
+                      <div className="space-y-3">
+                        <label className="text-xs font-bold tracking-widest text-black/50 dark:text-white/50 uppercase">Text or URL</label>
+                        <input
+                          type="text"
+                          value={qrInput}
+                          onChange={(e) => setQrInput(e.target.value)}
+                          placeholder="https://example.com or any text..."
+                          className="w-full h-14 px-5 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl text-base font-medium placeholder:text-black/30 dark:placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20 transition-all"
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <label className="text-xs font-bold tracking-widest text-black/50 dark:text-white/50 uppercase">Or upload an image (will host & encode URL)</label>
+                        <div
+                          onClick={() => document.getElementById('qr-file-input')?.click()}
+                          className="border-2 border-dashed border-black/15 dark:border-white/15 rounded-xl p-6 text-center cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                        >
+                          <input
+                            id="qr-file-input"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => e.target.files?.[0] && setQrFile(e.target.files[0])}
+                          />
+                          {qrFile ? (
+                            <div className="flex items-center justify-center gap-3">
+                              <ImageIcon size={20} className="text-black/60 dark:text-white/60" />
+                              <span className="font-semibold truncate max-w-[200px]">{qrFile.name}</span>
+                              <button onClick={(e) => { e.stopPropagation(); setQrFile(null); }} className="text-black/40 dark:text-white/40 hover:text-red-500 transition-colors">
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ) : (
+                            <p className="text-black/40 dark:text-white/40 font-medium">Click to select an image</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <Button
+                        size="lg"
+                        disabled={(!qrInput && !qrFile) || qrLoading}
+                        onClick={handleGenerateQR}
+                        className="w-full h-16 text-lg font-bold rounded-xl bg-black dark:bg-white hover:bg-black/80 dark:hover:bg-white/80 text-white dark:text-black shadow-xl active:scale-[0.98] transition-all"
+                      >
+                        {qrLoading ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating...</> : <><QrCode className="mr-2" size={20} /> Generate QR Code</>}
+                      </Button>
+                    </motion.div>
+                  ) : (
+                    <motion.div key="scan" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                      <div className="space-y-3">
+                        <label className="text-xs font-bold tracking-widest text-black/50 dark:text-white/50 uppercase">Upload a QR Code Image</label>
+                        <div
+                          onClick={() => document.getElementById('qr-scan-input')?.click()}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (e.dataTransfer.files?.[0]) handleDecodeQR(e.dataTransfer.files[0]);
+                          }}
+                          className="border-2 border-dashed border-black/15 dark:border-white/15 rounded-xl p-12 text-center cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex flex-col items-center justify-center min-h-[200px]"
+                        >
+                          <input
+                            id="qr-scan-input"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => e.target.files?.[0] && handleDecodeQR(e.target.files[0])}
+                          />
+                          <div className="w-16 h-16 rounded-2xl bg-black/5 dark:bg-white/10 flex items-center justify-center mb-4">
+                            <ScanLine className="w-8 h-8 text-black/40 dark:text-white/40" />
+                          </div>
+                          <p className="text-black/60 dark:text-white/60 font-semibold">Drop or click to scan a QR code</p>
+                          <p className="text-black/30 dark:text-white/30 text-sm mt-1">Supports PNG, JPG, WEBP</p>
+                        </div>
+                      </div>
+                      {qrLoading && (
+                        <div className="flex items-center justify-center gap-3 py-4">
+                          <Loader2 className="h-5 w-5 animate-spin text-black/50 dark:text-white/50" />
+                          <span className="text-sm font-bold text-black/50 dark:text-white/50 tracking-widest uppercase">Decoding...</span>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* QR Result */}
+                <AnimatePresence>
+                  {qrResult && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="mt-8 pt-8 border-t border-black/10 dark:border-white/10">
+                      {qrResult.error ? (
+                        <div className="text-center py-6">
+                          <p className="text-red-500 font-bold text-sm bg-red-50 dark:bg-red-950/50 inline-block px-4 py-2 rounded-lg">{qrResult.error}</p>
+                        </div>
+                      ) : qrResult.blob ? (
+                        <div className="flex flex-col items-center gap-6">
+                          <div className="bg-white p-6 rounded-2xl shadow-sm border border-black/10 dark:border-white/10">
+                            <img
+                              src={URL.createObjectURL(qrResult.blob)}
+                              alt="Generated QR Code"
+                              className="w-64 h-64 object-contain"
+                            />
+                          </div>
+                          <Button
+                            size="lg"
+                            className="rounded-xl font-bold shadow-md bg-black hover:bg-black/80 text-white dark:bg-white dark:text-black dark:hover:bg-white/90"
+                            onClick={() => {
+                              const url = URL.createObjectURL(qrResult.blob!);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = 'qrcode.png';
+                              a.click();
+                            }}
+                          >
+                            <Download size={18} className="mr-2" /> Download QR Code
+                          </Button>
+                        </div>
+                      ) : qrResult.text ? (
+                        <div className="flex flex-col items-center gap-5">
+                          <div className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl p-5">
+                            <p className="text-xs font-bold tracking-widest text-black/40 dark:text-white/40 uppercase mb-3">Decoded Content</p>
+                            <p className="text-lg font-semibold break-all leading-relaxed">{qrResult.text}</p>
+                          </div>
+                          <div className="flex gap-3">
+                            <Button
+                              variant="outline"
+                              className="rounded-xl font-bold border-black/20 dark:border-white/20 hover:bg-black/5 dark:hover:bg-white/10"
+                              onClick={() => { navigator.clipboard.writeText(qrResult.text!); alert('Copied to clipboard!'); }}
+                            >
+                              <Copy size={16} className="mr-2" /> Copy Text
+                            </Button>
+                            {(qrResult.text.startsWith('http://') || qrResult.text.startsWith('https://')) && (
+                              <Button
+                                variant="outline"
+                                className="rounded-xl font-bold border-black/20 dark:border-white/20 hover:bg-black/5 dark:hover:bg-white/10"
+                                onClick={() => window.open(qrResult.text!, '_blank')}
+                              >
+                                <ExternalLink size={16} className="mr-2" /> Open Link
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </main>
     </div>
   );
