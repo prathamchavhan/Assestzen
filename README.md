@@ -18,7 +18,6 @@
 
 ### 🌐 &nbsp; [https://assestzen.vercel.app](https://assestzen.vercel.app)
 
-
 </div>
 
 <br/>
@@ -107,6 +106,24 @@ A dual-mode QR utility:
 ```
 
 ## ◈ &nbsp; Tech Stack
+
+<div align="center">
+
+<br/>
+
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nextjs/nextjs-original.svg" height="45" title="Next.js" />&nbsp;&nbsp;&nbsp;
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg" height="45" title="React" />&nbsp;&nbsp;&nbsp;
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" height="45" title="TypeScript" />&nbsp;&nbsp;&nbsp;
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg" height="45" title="JavaScript" />&nbsp;&nbsp;&nbsp;
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tailwindcss/tailwindcss-original.svg" height="45" title="Tailwind CSS" />&nbsp;&nbsp;&nbsp;
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" height="45" title="Python" />&nbsp;&nbsp;&nbsp;
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/fastapi/fastapi-original.svg" height="45" title="FastAPI" />&nbsp;&nbsp;&nbsp;
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg" height="45" title="Node.js" />&nbsp;&nbsp;&nbsp;
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vercel/vercel-original.svg" height="45" title="Vercel" />
+
+<br/><br/>
+
+</div>
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -287,6 +304,9 @@ git push origin feature/your-feature-name
 
 <br/>
 
+<div align="center">
+
+<br/>
 
 ```
   ✦  Built with precision  ·  Zero noise  ·  Pure utility  ✦
