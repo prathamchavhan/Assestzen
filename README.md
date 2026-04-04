@@ -287,26 +287,6 @@ git push origin feature/your-feature-name
 
 <br/>
 
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-## ◈ &nbsp; License
-
-```
-MIT License — free to use, modify, and distribute.
-Copyright © 2025 AssestZen · prathamchavhan
-```
-
-<br/>
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-<div align="center">
-
-<br/>
 
 ```
   ✦  Built with precision  ·  Zero noise  ·  Pure utility  ✦
