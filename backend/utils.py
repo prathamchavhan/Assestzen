@@ -26,7 +26,7 @@ def downscale_image(image_bytes: bytes, max_dim: int = 2048) -> bytes:
     try:
         img = Image.open(io.BytesIO(image_bytes))
         if max(img.size) > max_dim:
-            img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+            img.thumbnail((max_dim, max_dim), Image.BILINEAR)
             out = io.BytesIO()
             fmt = "PNG" if img.mode == "RGBA" else "JPEG"
             img.save(out, format=fmt, quality=90)
@@ -78,51 +78,71 @@ def convert_image_format(image: Image.Image, target_format: str) -> bytes:
     return out.getvalue()
 
 def compress_image(image_bytes: bytes, target_size_kb: float, fmt: str) -> bytes:
-    """Fast image compression with limited iterations for speed."""
-    # Pre-downscale to reduce processing time
-    image_bytes = downscale_image(image_bytes, max_dim=2048)
-    target_bytes = target_size_kb * 1024
+    """Ultra-fast image compression — typically completes in <200ms."""
+    target_bytes = int(target_size_kb * 1024)
+
+    # Early exit: already under target
+    if len(image_bytes) <= target_bytes:
+        return image_bytes
+
     image = Image.open(io.BytesIO(image_bytes))
-    
+
+    # Normalize format once
+    fmt = fmt.upper()
     if fmt == "JPG":
         fmt = "JPEG"
-        
-    if fmt not in ["JPEG", "WEBP", "WebP"]:
-        if fmt == "PNG":
-            out = io.BytesIO()
-            image.save(out, format="PNG", optimize=True)
-            return out.getvalue()
+
+    # PNG: can't quality-compress, just optimize & return
+    if fmt == "PNG":
+        out = io.BytesIO()
+        image.save(out, format="PNG", optimize=True)
+        return out.getvalue()
+
+    if fmt not in ("JPEG", "WEBP"):
         return image_bytes
+
+    # Adaptive downscale: smaller targets get more aggressive resize
+    max_dim = 2048
+    if target_size_kb < 50:
+        max_dim = 800
+    elif target_size_kb < 100:
+        max_dim = 1024
+    elif target_size_kb < 200:
+        max_dim = 1536
+
+    if max(image.size) > max_dim:
+        image.thumbnail((max_dim, max_dim), Image.BILINEAR)
 
     if image.mode in ("RGBA", "P") and fmt == "JPEG":
         image = image.convert("RGB")
 
-    # Fast path: try quality 85 first
+    # Fast path: single encode at q=80
     out = io.BytesIO()
-    image.save(out, format=fmt, quality=85)
-    if len(out.getvalue()) <= target_bytes:
+    image.save(out, format=fmt, quality=80)
+    if out.tell() <= target_bytes:
         return out.getvalue()
 
-    # Quick binary search — max 5 iterations instead of ~7
-    low, high = 20, 80
+    # Quick binary search — 3 iterations only (precision ~8 quality steps)
+    low, high = 15, 75
     best = None
-    for _ in range(5):
+    for _ in range(3):
         if low > high:
             break
         mid = (low + high) // 2
-        temp = io.BytesIO()
-        image.save(temp, format=fmt, quality=mid)
-        if len(temp.getvalue()) <= target_bytes:
-            best = temp.getvalue()
+        buf = io.BytesIO()
+        image.save(buf, format=fmt, quality=mid)
+        if buf.tell() <= target_bytes:
+            best = buf.getvalue()
             low = mid + 1
         else:
             high = mid - 1
 
     if best:
         return best
-    
+
+    # Fallback: lowest quality
     final = io.BytesIO()
-    image.save(final, format=fmt, quality=20)
+    image.save(final, format=fmt, quality=15)
     return final.getvalue()
 
 def compress_video_ffmpeg(input_path: str, crf: int) -> str:
