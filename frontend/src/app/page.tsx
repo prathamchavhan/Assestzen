@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
-import { UploadCloud, CheckCircle, Download, Link as LinkIcon, Image as ImageIcon, Video, Loader2, Trash2, Moon, Sun, MonitorPlay, QrCode, ScanLine, Copy, ExternalLink, Brain, Zap, Trophy } from 'lucide-react';
+import { UploadCloud, CheckCircle, Download, Link as LinkIcon, Image as ImageIcon, Video, Loader2, Trash2, Moon, Sun, MonitorPlay, QrCode, ScanLine, Copy, ExternalLink, Brain, Zap, Trophy, Activity } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -498,11 +499,21 @@ export default function Home() {
             <h1 className="text-2xl font-extrabold tracking-tight">Assestzen</h1>
           </div>
 
-          {mounted && (
-            <Button variant="outline" size="icon" className="rounded-full w-12 h-12 border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 transition-colors" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            {mounted && (
+              <Link href="/keep-alive">
+                <Button variant="outline" size="icon" title="Keep-Alive Service" className="rounded-full w-12 h-12 border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                  <Activity size={20} />
+                </Button>
+              </Link>
+            )}
+
+            {mounted && (
+              <Button variant="outline" size="icon" className="rounded-full w-12 h-12 border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 transition-colors" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+              </Button>
+            )}
+          </div>
         </header>
 
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="mb-16">
