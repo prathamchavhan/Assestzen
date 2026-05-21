@@ -120,3 +120,26 @@ export const decodeQR = async (file: File) => {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
 };
+
+export const getKeepAliveTasks = async () => {
+    return apiClient.get('/keep-alive-tasks');
+};
+
+export const addKeepAliveTask = async (url: string, alias?: string, interval?: number) => {
+    const formData = new FormData();
+    formData.append('url', url);
+    if (alias) formData.append('alias', alias);
+    if (interval) formData.append('interval_minutes', interval.toString());
+
+    return apiClient.post('/keep-alive-tasks', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+};
+
+export const deleteKeepAliveTask = async (id: number) => {
+    return apiClient.delete(`/keep-alive-tasks/${id}`);
+};
+
+export const toggleKeepAliveTask = async (id: number) => {
+    return apiClient.post(`/keep-alive-tasks/${id}/toggle`);
+};

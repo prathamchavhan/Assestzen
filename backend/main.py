@@ -4,7 +4,7 @@ import uuid
 import asyncio
 import tempfile
 import zipfile
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -12,6 +12,8 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
 import utils
+import keep_alive
+from keep_alive import KeepAliveService, SessionLocal, get_all_tasks, create_task, delete_task, toggle_task
 
 app = FastAPI(title="OptiMedia AI API")
 
@@ -34,6 +36,62 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 @app.get("/")
 def read_root():
     return {"message": "OptiMedia AI API is running"}
+
+# --- Keep Alive Service Setup ---
+ka_service = KeepAliveService()
+
+@app.on_event("startup")
+async def startup_event():
+    ka_service.start()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    ka_service.stop()
+
+# Dependency to get DB session
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@app.get("/keep-alive-tasks")
+def list_tasks(db: SessionLocal = Depends(get_db)):
+    return get_all_tasks(db)
+
+@app.post("/keep-alive-tasks")
+def add_task(
+    url: str = Form(...),
+    alias: str = Form(None),
+    interval_minutes: int = Form(14),
+    db: SessionLocal = Depends(get_db)
+):
+    task = create_task(db, url, alias, interval_minutes)
+    if task.is_active:
+        ka_service.schedule_task(task)
+    return task
+
+@app.delete("/keep-alive-tasks/{task_id}")
+def remove_task(task_id: int, db: SessionLocal = Depends(get_db)):
+    ka_service.unschedule_task(task_id)
+    success = delete_task(db, task_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"message": "Task deleted"}
+
+@app.post("/keep-alive-tasks/{task_id}/toggle")
+def toggle_task_status(task_id: int, db: SessionLocal = Depends(get_db)):
+    task = toggle_task(db, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    if task.is_active:
+        ka_service.schedule_task(task)
+    else:
+        ka_service.unschedule_task(task_id)
+    
+    return task
 
 @app.post("/process-image")
 async def process_image(

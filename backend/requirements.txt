@@ -7,3 +7,6 @@ ffmpeg-python
 aiofiles
 qrcode[pil]
 pyzbar
+apscheduler
+httpx
+sqlalchemy

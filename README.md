@@ -47,6 +47,7 @@
 │  ✂️  Remove BG   │  AI-powered background removal, one click        │
 │  🔗  To URL      │  Upload media → get a hosted shareable link      │
 │  📷  QR Tools    │  Generate & scan QR codes instantly              │
+│  💓  Keep-Alive  │  Prevent free-tier services from spinning down   │
 └──────────────────┴──────────────────────────────────────────────────┘
 ```
 
@@ -68,6 +69,12 @@ Upload any image and receive an instantly hosted URL — ready to embed in markd
 A dual-mode QR utility:
 - **Generate** — Convert any text or URL into a scannable QR code
 - **Scan** — Upload a QR image and extract its encoded content
+
+### 💓 &nbsp; Keep-Alive Service
+A dedicated dashboard to manage background "pings" for your free-tier services:
+- **Render** — Set a 14m interval to stay below the 15m spin-down limit
+- **Supabase** — Ensure your database projects stay active
+- **Status Monitoring** — View last ping time and HTTP status codes
 
 <br/>
 
