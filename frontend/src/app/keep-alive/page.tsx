@@ -10,12 +10,12 @@ import {
     Trash2,
     Play,
     Square,
-    ArrowLeft,
     ExternalLink,
     AlertCircle,
     CheckCircle2,
     RefreshCw,
-    Timer
+    Timer,
+    Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,8 +25,7 @@ import {
     deleteKeepAliveTask,
     toggleKeepAliveTask
 } from '@/lib/api';
-import { useTheme } from 'next-themes';
-import Link from 'next/link';
+import { Navbar } from '@/components/Navbar';
 
 interface KeepAliveTask {
     id: number;
@@ -39,7 +38,6 @@ interface KeepAliveTask {
 }
 
 export default function KeepAlivePage() {
-    const { theme } = useTheme();
     const [tasks, setTasks] = useState<KeepAliveTask[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
@@ -106,69 +104,71 @@ export default function KeepAlivePage() {
 
     return (
         <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white font-sans transition-colors duration-500">
-            <main className="max-w-5xl mx-auto px-6 py-12 lg:py-24">
+            <Navbar />
 
-                {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-16">
-                    <div>
-                        <Link href="/" className="inline-flex items-center gap-2 text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-colors mb-6 font-bold text-sm uppercase tracking-widest">
-                            <ArrowLeft size={16} /> Back to Toolkit
-                        </Link>
+            <main className="max-w-5xl mx-auto px-6 pt-32 pb-24 lg:pt-40">
+                <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8 }}
+                    className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16"
+                >
+                    <div className="flex-1">
                         <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-4">
                             Keep-Alive <span className="text-black/20 dark:text-white/20">Service</span>
                         </h1>
-                        <p className="text-xl text-black/60 dark:text-white/60 font-medium">
-                            Prevent your free-tier services from sleeping.
+                        <p className="text-xl md:text-2xl text-black/60 dark:text-white/60 font-medium max-w-xl leading-relaxed">
+                            Prevent your free-tier services from sleeping with automated background pings.
                         </p>
                     </div>
                     <Button
                         onClick={() => setIsAdding(!isAdding)}
-                        className="h-16 px-8 rounded-2xl bg-black dark:bg-white text-white dark:text-black font-bold text-lg shadow-xl active:scale-95 transition-all"
+                        className="h-20 px-10 rounded-[1.5rem] bg-black dark:bg-white text-white dark:text-black font-black text-xl shadow-2xl active:scale-95 transition-all w-full md:w-auto"
                     >
-                        {isAdding ? <Square className="mr-2" size={20} /> : <Plus className="mr-2" size={20} />}
+                        {isAdding ? <Square className="mr-3" size={24} /> : <Plus className="mr-3" size={24} />}
                         {isAdding ? "Cancel" : "Add Service"}
                     </Button>
-                </div>
+                </motion.div>
 
                 {/* Add Form */}
                 <AnimatePresence>
                     {isAdding && (
                         <motion.div
                             initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                            animate={{ opacity: 1, height: "auto", marginBottom: 48 }}
+                            animate={{ opacity: 1, height: "auto", marginBottom: 64 }}
                             exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                             className="overflow-hidden"
                         >
-                            <Card className="border-2 border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] rounded-[2rem]">
-                                <CardContent className="p-8">
-                                    <form onSubmit={handleAddTask} className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                                        <div className="md:col-span-12 lg:col-span-5 space-y-2">
-                                            <label className="text-xs font-bold tracking-widest text-black/50 dark:text-white/50 uppercase ml-1">Service URL</label>
+                            <Card className="border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] rounded-[2.5rem] shadow-inner">
+                                <CardContent className="p-8 md:p-12">
+                                    <form onSubmit={handleAddTask} className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                                        <div className="md:col-span-12 lg:col-span-5 space-y-3">
+                                            <label className="text-xs font-black tracking-widest text-black/40 dark:text-white/40 uppercase ml-1">Service URL</label>
                                             <div className="relative">
-                                                <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30" size={20} />
+                                                <Globe className="absolute left-5 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30" size={20} />
                                                 <input
                                                     type="url"
                                                     required
                                                     value={url}
                                                     onChange={e => setUrl(e.target.value)}
-                                                    placeholder="https://your-service.onrender.com"
-                                                    className="w-full h-14 pl-12 pr-5 bg-white dark:bg-black border border-black/10 dark:border-white/10 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20 transition-all font-mono"
+                                                    placeholder="https://app.render.com"
+                                                    className="w-full h-16 pl-14 pr-6 bg-white dark:bg-black border border-black/10 dark:border-white/10 rounded-2xl text-lg font-medium focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20 outline-none transition-all"
                                                 />
                                             </div>
                                         </div>
-                                        <div className="md:col-span-6 lg:col-span-3 space-y-2">
-                                            <label className="text-xs font-bold tracking-widest text-black/50 dark:text-white/50 uppercase ml-1">Alias (Optional)</label>
+                                        <div className="md:col-span-6 lg:col-span-3 space-y-3">
+                                            <label className="text-xs font-black tracking-widest text-black/40 dark:text-white/40 uppercase ml-1">Alias</label>
                                             <input
                                                 value={alias}
                                                 onChange={e => setAlias(e.target.value)}
-                                                placeholder="My App Dev"
-                                                className="w-full h-14 px-5 bg-white dark:bg-black border border-black/10 dark:border-white/10 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20 transition-all"
+                                                placeholder="My Backend"
+                                                className="w-full h-16 px-6 bg-white dark:bg-black border border-black/10 dark:border-white/10 rounded-2xl text-lg font-medium focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20 outline-none transition-all"
                                             />
                                         </div>
-                                        <div className="md:col-span-6 lg:col-span-2 space-y-2">
-                                            <label className="text-xs font-bold tracking-widest text-black/50 dark:text-white/50 uppercase ml-1">Interval (Min)</label>
+                                        <div className="md:col-span-6 lg:col-span-2 space-y-3">
+                                            <label className="text-xs font-black tracking-widest text-black/40 dark:text-white/40 uppercase ml-1">Interval (Min)</label>
                                             <div className="relative">
-                                                <Timer className="absolute left-4 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30" size={18} />
+                                                <Timer className="absolute left-5 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30" size={20} />
                                                 <input
                                                     type="number"
                                                     min="1"
@@ -176,7 +176,7 @@ export default function KeepAlivePage() {
                                                     required
                                                     value={interval}
                                                     onChange={e => setInterval(parseInt(e.target.value))}
-                                                    className="w-full h-14 pl-12 pr-5 bg-white dark:bg-black border border-black/10 dark:border-white/10 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20 transition-all"
+                                                    className="w-full h-16 pl-14 pr-6 bg-white dark:bg-black border border-black/10 dark:border-white/10 rounded-2xl text-lg font-medium focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20 outline-none transition-all"
                                                 />
                                             </div>
                                         </div>
@@ -184,9 +184,9 @@ export default function KeepAlivePage() {
                                             <Button
                                                 type="submit"
                                                 disabled={formLoading}
-                                                className="w-full h-14 rounded-xl bg-black dark:bg-white text-white dark:text-black font-bold shadow-lg"
+                                                className="w-full h-16 rounded-2xl bg-black dark:bg-white text-white dark:text-black font-black text-lg shadow-xl"
                                             >
-                                                {formLoading ? <RefreshCw className="animate-spin" size={20} /> : "Save"}
+                                                {formLoading ? <Loader2 className="animate-spin" size={24} /> : "Save Target"}
                                             </Button>
                                         </div>
                                     </form>
@@ -197,96 +197,94 @@ export default function KeepAlivePage() {
                 </AnimatePresence>
 
                 {/* Task List */}
-                <div className="grid gap-6">
+                <div className="grid gap-8">
                     {loading ? (
-                        <div className="py-24 text-center">
-                            <RefreshCw className="mx-auto animate-spin text-black/20 dark:text-white/20 mb-4" size={48} />
-                            <p className="font-bold text-black/40 dark:text-white/40 uppercase tracking-widest text-sm">Booting Services...</p>
+                        <div className="py-32 text-center">
+                            <Loader2 className="mx-auto animate-spin text-black/10 dark:text-white/10 mb-6" size={64} />
+                            <p className="font-black text-black/30 dark:text-white/30 uppercase tracking-[0.2em] text-sm">Syncing Monitors</p>
                         </div>
                     ) : tasks.length === 0 ? (
-                        <div className="py-24 px-12 border-2 border-dashed border-black/10 dark:border-white/10 rounded-[3rem] text-center bg-black/[0.01] dark:bg-white/[0.01]">
-                            <Activity className="mx-auto text-black/10 dark:text-white/10 mb-6" size={64} />
-                            <h3 className="text-2xl font-bold mb-2">No active monitors</h3>
-                            <p className="text-black/40 dark:text-white/40 max-w-sm mx-auto font-medium">Add your first service to start preventing it from spinning down.</p>
+                        <div className="py-32 px-12 border-2 border-dashed border-black/5 dark:border-white/5 rounded-[3rem] text-center bg-black/[0.01] dark:bg-white/[0.01]">
+                            <Activity className="mx-auto text-black/5 dark:text-white/5 mb-8" size={80} />
+                            <h3 className="text-3xl font-black mb-3">No Active Watchers</h3>
+                            <p className="text-black/40 dark:text-white/40 max-w-sm mx-auto font-bold text-lg">Add your first service to prevent it from sleeping during inactivity.</p>
                         </div>
                     ) : (
                         tasks.map((task, idx) => (
                             <motion.div
                                 key={task.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
                                 transition={{ delay: idx * 0.05 }}
                             >
-                                <Card className="border border-black/10 dark:border-white/10 bg-white dark:bg-black rounded-3xl overflow-hidden hover:border-black/30 dark:hover:border-white/30 transition-all shadow-md hover:shadow-xl">
-                                    <div className="p-6 md:p-8 flex flex-col md:flex-row items-center gap-6">
-
-                                        {/* Status Indicator */}
-                                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 border-2 ${!task.is_active
-                                            ? 'bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/5 text-black/20 dark:text-white/20'
+                                <Card className="border border-black/5 dark:border-white/5 bg-white dark:bg-black rounded-[2.5rem] overflow-hidden hover:border-black/20 dark:hover:border-white/20 transition-all shadow-xl hover:shadow-2xl group">
+                                    <div className="p-8 md:p-10 flex flex-col md:flex-row items-center gap-10">
+                                        {/* Status */}
+                                        <div className={`w-20 h-20 rounded-3xl flex items-center justify-center shrink-0 border-2 transition-colors ${!task.is_active
+                                            ? 'bg-black/5 border-black/5 text-black/20 dark:bg-white/5 dark:border-white/5 dark:text-white/20'
                                             : task.last_status === 200
-                                                ? 'bg-green-500/10 border-green-500/20 text-green-500'
-                                                : task.last_status ? 'bg-red-500/10 border-red-500/20 text-red-500'
-                                                    : 'bg-black dark:bg-white border-transparent text-white dark:text-black'
+                                                ? 'bg-green-500/10 border-green-500/10 text-green-500'
+                                                : task.last_status ? 'bg-red-500/10 border-red-500/10 text-red-500'
+                                                    : 'bg-black dark:bg-white text-white dark:text-black border-transparent'
                                             }`}>
-                                            {!task.is_active ? <Square size={28} /> : task.last_status === 200 ? <CheckCircle2 size={28} /> : task.last_status ? <AlertCircle size={28} /> : <Activity size={28} className="animate-pulse" />}
+                                            {!task.is_active ? <Square size={32} /> : task.last_status === 200 ? <CheckCircle2 size={32} /> : task.last_status ? <AlertCircle size={32} /> : <Activity size={32} className="animate-pulse" />}
                                         </div>
 
                                         {/* Info */}
                                         <div className="flex-1 min-w-0 text-center md:text-left">
-                                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-2">
-                                                <h3 className="text-xl font-black truncate">{task.alias || "Unnamed Service"}</h3>
-                                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${task.is_active ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-black/10 dark:bg-white/10 text-black/40 dark:text-white/40'
-                                                    }`}>
-                                                    {task.is_active ? 'Active' : 'Paused'}
+                                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-3 text-2xl font-black tracking-tight">
+                                                <h3 className="truncate max-w-[300px]">{task.alias || "Service"}</h3>
+                                                <span className={`px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest ${task.is_active ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-black/5 text-black/30 dark:bg-white/5 dark:text-white/30'}`}>
+                                                    {task.is_active ? 'Online' : 'Paused'}
                                                 </span>
                                             </div>
-                                            <div className="flex items-center justify-center md:justify-start gap-2 text-black/50 dark:text-white/50 font-mono text-sm">
-                                                <Globe size={14} />
-                                                <span className="truncate">{task.url}</span>
+                                            <div className="flex items-center justify-center md:justify-start gap-3 text-black/40 dark:text-white/40 font-bold text-lg">
+                                                <Globe size={18} />
+                                                <span className="truncate max-w-[400px]">{task.url}</span>
                                                 <a href={task.url} target="_blank" rel="noopener noreferrer" className="hover:text-black dark:hover:text-white transition-colors">
-                                                    <ExternalLink size={14} />
+                                                    <ExternalLink size={18} />
                                                 </a>
                                             </div>
                                         </div>
 
                                         {/* Stats */}
-                                        <div className="flex items-center gap-8 px-8 py-4 bg-black/[0.02] dark:bg-white/[0.02] rounded-2xl border border-black/5 dark:border-white/5">
+                                        <div className="flex items-center gap-10 px-10 py-6 bg-black/[0.02] dark:bg-white/[0.02] rounded-3xl border border-black/5 dark:border-white/5">
                                             <div className="text-center">
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-black/30 dark:text-white/30 mb-1">Interval</p>
-                                                <div className="flex items-center gap-1.5 justify-center">
-                                                    <Clock size={12} className="text-black/50 dark:text-white/50" />
-                                                    <p className="font-bold text-sm">{task.interval_minutes}m</p>
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-black/30 dark:text-white/30 mb-2">Cycle</p>
+                                                <div className="flex items-center gap-2 justify-center">
+                                                    <Clock size={14} className="text-black/40 dark:text-white/40" />
+                                                    <p className="font-black text-lg">{task.interval_minutes}m</p>
                                                 </div>
                                             </div>
-                                            <div className="w-[1px] h-8 bg-black/10 dark:border-white/10" />
+                                            <div className="w-[1px] h-10 bg-black/5 dark:bg-white/10" />
                                             <div className="text-center">
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-black/30 dark:text-white/30 mb-1">Last Ping</p>
-                                                <p className="font-bold text-sm">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-black/30 dark:text-white/30 mb-2">Telemetry</p>
+                                                <p className="font-black text-lg">
                                                     {task.last_ping ? new Date(task.last_ping).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "---"}
                                                 </p>
                                             </div>
                                         </div>
 
                                         {/* Actions */}
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-4">
                                             <Button
                                                 variant="outline"
                                                 size="icon"
                                                 onClick={() => handleToggleTask(task.id)}
-                                                className={`w-12 h-12 rounded-xl transition-all ${task.is_active
-                                                    ? 'border-black/20 dark:border-white/20 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black'
+                                                className={`w-14 h-14 rounded-2xl transition-all border-2 ${task.is_active
+                                                    ? 'border-black/10 dark:border-white/10 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black'
                                                     : 'bg-black dark:bg-white text-white dark:text-black border-transparent'
                                                     }`}
                                             >
-                                                {task.is_active ? <Square size={18} /> : <Play size={18} />}
+                                                {task.is_active ? <Square size={20} /> : <Play size={20} />}
                                             </Button>
                                             <Button
                                                 variant="outline"
                                                 size="icon"
                                                 onClick={() => handleDeleteTask(task.id)}
-                                                className="w-12 h-12 rounded-xl border-black/10 dark:border-white/10 hover:border-red-500 hover:text-red-500 transition-all"
+                                                className="w-14 h-14 rounded-2xl border-2 border-black/5 dark:border-white/5 hover:border-red-500 hover:text-red-500 transition-all hover:scale-105"
                                             >
-                                                <Trash2 size={18} />
+                                                <Trash2 size={20} />
                                             </Button>
                                         </div>
                                     </div>
@@ -296,13 +294,12 @@ export default function KeepAlivePage() {
                     )}
                 </div>
 
-                {/* Footer Tip */}
-                <div className="mt-16 text-center">
-                    <p className="text-sm font-bold text-black/30 dark:text-white/30 tracking-wide flex items-center justify-center gap-2">
-                        <AlertCircle size={14} /> Tip: Render free tier spins down after 15m of inactivity. Set 14m to be safe.
+                {/* Tip */}
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }} className="mt-20 p-8 rounded-[2rem] bg-black/5 dark:bg-white/5 text-center">
+                    <p className="text-sm font-black text-black/30 dark:text-white/30 tracking-widest flex items-center justify-center gap-3 uppercase">
+                        <AlertCircle size={18} /> Render free tier spins down after 15m. Recommendation: Set 14m.
                     </p>
-                </div>
-
+                </motion.div>
             </main>
         </div>
     );

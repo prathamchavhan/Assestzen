@@ -1,344 +1,18 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
-import { UploadCloud, CheckCircle, Download, Link as LinkIcon, Image as ImageIcon, Video, Loader2, Trash2, Moon, Sun, MonitorPlay, QrCode, ScanLine, Copy, ExternalLink, Brain, Zap, Trophy, Activity } from 'lucide-react';
-import Link from 'next/link';
+import { UploadCloud, CheckCircle, Download, Link as LinkIcon, Image as ImageIcon, Video, Loader2, Trash2, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { processImage, processVideo, generateQR, decodeQR } from '@/lib/api';
-import { useTheme } from 'next-themes';
-
-// ─── Math Challenge Mini-Game Component ───
-function MathGame({ compact = false }: { compact?: boolean }) {
-  const [score, setScore] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [bestStreak, setBestStreak] = useState(0);
-  const [question, setQuestion] = useState({ text: '', answer: 0 });
-  const [userAnswer, setUserAnswer] = useState('');
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
-  const [questionCount, setQuestionCount] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const generateQuestion = useCallback(() => {
-    const types = [
-      'percentage', 'square', 'cube', 'sqrt', 'lcm', 'hcf',
-      'series', 'profitLoss', 'ratio', 'average', 'remainder',
-      'power', 'speedTime', 'simplify', 'factorial', 'modular'
-    ];
-    const type = types[Math.floor(Math.random() * types.length)];
-    let text = '', answer = 0;
-
-    const gcd = (x: number, y: number): number => y === 0 ? x : gcd(y, x % y);
-    const lcm = (x: number, y: number): number => (x * y) / gcd(x, y);
-
-    switch (type) {
-      case 'percentage': {
-        const percents = [10, 15, 20, 25, 30, 40, 50, 60, 75];
-        const p = percents[Math.floor(Math.random() * percents.length)];
-        const bases = [80, 120, 150, 200, 250, 300, 400, 500, 600, 800];
-        const base = bases[Math.floor(Math.random() * bases.length)];
-        text = `${p}% of ${base} = ?`;
-        answer = (p * base) / 100;
-        break;
-      }
-      case 'square': {
-        const n = Math.floor(Math.random() * 25) + 6;
-        text = `${n}² = ?`;
-        answer = n * n;
-        break;
-      }
-      case 'cube': {
-        const n = Math.floor(Math.random() * 10) + 3;
-        text = `${n}³ = ?`;
-        answer = n * n * n;
-        break;
-      }
-      case 'sqrt': {
-        const roots = [4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144, 169, 196, 225, 256, 289, 324, 361, 400, 441, 484, 529, 576, 625];
-        const sq = roots[Math.floor(Math.random() * roots.length)];
-        text = `√${sq} = ?`;
-        answer = Math.sqrt(sq);
-        break;
-      }
-      case 'lcm': {
-        const a = Math.floor(Math.random() * 12) + 4;
-        const b = Math.floor(Math.random() * 12) + 4;
-        text = `LCM of ${a} and ${b} = ?`;
-        answer = lcm(a, b);
-        break;
-      }
-      case 'hcf': {
-        const a = Math.floor(Math.random() * 30) + 12;
-        const b = Math.floor(Math.random() * 30) + 12;
-        text = `HCF of ${a} and ${b} = ?`;
-        answer = gcd(a, b);
-        break;
-      }
-      case 'series': {
-        // Arithmetic progression — find the next number
-        const start = Math.floor(Math.random() * 10) + 1;
-        const diff = Math.floor(Math.random() * 8) + 2;
-        const terms = [start, start + diff, start + 2 * diff, start + 3 * diff];
-        text = `${terms.join(', ')}, ? (next)`;
-        answer = start + 4 * diff;
-        break;
-      }
-      case 'profitLoss': {
-        const cp = [100, 150, 200, 250, 300, 400, 500][Math.floor(Math.random() * 7)];
-        const profitPct = [10, 15, 20, 25, 30, 40, 50][Math.floor(Math.random() * 7)];
-        text = `CP = ₹${cp}, Profit = ${profitPct}%. SP = ?`;
-        answer = cp + (cp * profitPct) / 100;
-        break;
-      }
-      case 'ratio': {
-        const r1 = Math.floor(Math.random() * 5) + 2;
-        const r2 = Math.floor(Math.random() * 5) + 2;
-        const total = (r1 + r2) * (Math.floor(Math.random() * 8) + 3);
-        text = `Divide ${total} in ratio ${r1}:${r2}. Larger part = ?`;
-        const larger = Math.max(r1, r2);
-        answer = (total * larger) / (r1 + r2);
-        break;
-      }
-      case 'average': {
-        const count = Math.floor(Math.random() * 3) + 3;
-        const nums: number[] = [];
-        for (let i = 0; i < count; i++) nums.push(Math.floor(Math.random() * 30) + 5);
-        const sum = nums.reduce((a, b) => a + b, 0);
-        // Ensure clean average
-        const remainder = sum % count;
-        if (remainder !== 0) nums[0] += (count - remainder);
-        const cleanSum = nums.reduce((a, b) => a + b, 0);
-        text = `Average of ${nums.join(', ')} = ?`;
-        answer = cleanSum / count;
-        break;
-      }
-      case 'remainder': {
-        const divisor = Math.floor(Math.random() * 8) + 3;
-        const quotient = Math.floor(Math.random() * 20) + 5;
-        const rem = Math.floor(Math.random() * (divisor - 1)) + 1;
-        const dividend = divisor * quotient + rem;
-        text = `${dividend} ÷ ${divisor} → remainder = ?`;
-        answer = rem;
-        break;
-      }
-      case 'power': {
-        const base = Math.floor(Math.random() * 6) + 2;
-        const exp = Math.floor(Math.random() * 4) + 2;
-        text = `${base}^${exp} = ?`;
-        answer = Math.pow(base, exp);
-        break;
-      }
-      case 'speedTime': {
-        const speeds = [20, 30, 40, 50, 60, 80];
-        const speed = speeds[Math.floor(Math.random() * speeds.length)];
-        const times = [2, 3, 4, 5, 6];
-        const time = times[Math.floor(Math.random() * times.length)];
-        text = `Speed=${speed}km/h, Time=${time}hrs. Distance=?`;
-        answer = speed * time;
-        break;
-      }
-      case 'simplify': {
-        const a = Math.floor(Math.random() * 20) + 5;
-        const b = Math.floor(Math.random() * 15) + 3;
-        const c = Math.floor(Math.random() * 10) + 2;
-        text = `${a} + ${b} × ${c} = ? (BODMAS)`;
-        answer = a + b * c;
-        break;
-      }
-      case 'factorial': {
-        const n = Math.floor(Math.random() * 5) + 3;
-        let fact = 1;
-        for (let i = 2; i <= n; i++) fact *= i;
-        text = `${n}! = ?`;
-        answer = fact;
-        break;
-      }
-      case 'modular': {
-        const base = Math.floor(Math.random() * 50) + 20;
-        const mod = Math.floor(Math.random() * 8) + 3;
-        text = `${base} mod ${mod} = ?`;
-        answer = base % mod;
-        break;
-      }
-      default: {
-        text = '15 + 27 = ?';
-        answer = 42;
-      }
-    }
-
-    setQuestion({ text, answer });
-    setUserAnswer('');
-    setFeedback(null);
-    setQuestionCount(prev => prev + 1);
-    setTimeout(() => inputRef.current?.focus(), 100);
-  }, []);
-
-  useEffect(() => {
-    generateQuestion();
-  }, [generateQuestion]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const parsed = parseInt(userAnswer);
-    if (isNaN(parsed)) return;
-
-    if (parsed === question.answer) {
-      setFeedback('correct');
-      setScore(prev => prev + 10);
-      setStreak(prev => {
-        const newStreak = prev + 1;
-        setBestStreak(best => Math.max(best, newStreak));
-        return newStreak;
-      });
-    } else {
-      setFeedback('wrong');
-      setStreak(0);
-    }
-
-    setTimeout(() => generateQuestion(), 600);
-  };
-
-  if (compact) {
-    return (
-      <div className="w-full">
-        <div className="flex items-center gap-2 mb-3">
-          <Brain size={16} className="text-black/50 dark:text-white/50" />
-          <span className="text-xs font-bold tracking-widest text-black/50 dark:text-white/50 uppercase">Brain Teaser</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-black">{question.text} = ?</span>
-          <form onSubmit={handleSubmit} className="flex gap-2 flex-1">
-            <input
-              ref={inputRef}
-              type="number"
-              value={userAnswer}
-              onChange={(e) => setUserAnswer(e.target.value)}
-              className="w-20 h-9 px-3 bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 rounded-lg text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20"
-              placeholder="?"
-            />
-            <Button type="submit" size="sm" className="h-9 px-3 rounded-lg bg-black dark:bg-white text-white dark:text-black text-xs font-bold">Go</Button>
-          </form>
-          <span className="text-xs font-bold bg-black/5 dark:bg-white/10 px-2 py-1 rounded-full">{score}pts</span>
-        </div>
-        <AnimatePresence>
-          {feedback && (
-            <motion.p
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className={`text-xs font-bold mt-2 ${feedback === 'correct' ? 'text-green-500' : 'text-red-500'}`}
-            >
-              {feedback === 'correct' ? '✓ Correct!' : `✗ Answer: ${question.answer}`}
-            </motion.p>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className="w-full"
-    >
-      <div className="bg-white dark:bg-black rounded-3xl border border-black/10 dark:border-white/10 shadow-xl overflow-hidden">
-        {/* Header */}
-        <div className="bg-black dark:bg-white px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Brain className="w-5 h-5 text-white dark:text-black" />
-            <span className="text-white dark:text-black font-bold text-sm tracking-widest uppercase">Math Challenge</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5 text-white/70 dark:text-black/70">
-              <Zap size={14} />
-              <span className="text-xs font-bold">{streak} streak</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-white/70 dark:text-black/70">
-              <Trophy size={14} />
-              <span className="text-xs font-bold">Best: {bestStreak}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Game Body */}
-        <div className="p-8 text-center">
-          <div className="mb-2">
-            <span className="text-xs font-bold tracking-widest text-black/30 dark:text-white/30 uppercase">Question #{questionCount}</span>
-          </div>
-
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={questionCount}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <p className="text-5xl md:text-6xl font-black tracking-tighter mb-8">{question.text} = ?</p>
-            </motion.div>
-          </AnimatePresence>
-
-          <form onSubmit={handleSubmit} className="flex items-center justify-center gap-4 mb-6">
-            <input
-              ref={inputRef}
-              type="number"
-              value={userAnswer}
-              onChange={(e) => setUserAnswer(e.target.value)}
-              className="w-32 h-16 text-center text-2xl font-black bg-black/5 dark:bg-white/5 border-2 border-black/15 dark:border-white/15 rounded-2xl focus:outline-none focus:ring-2 focus:ring-black/30 dark:focus:ring-white/30 focus:border-black/30 dark:focus:border-white/30 transition-all"
-              placeholder="?"
-              autoFocus
-            />
-            <Button type="submit" size="lg" className="h-16 px-8 rounded-2xl bg-black dark:bg-white text-white dark:text-black font-bold text-lg shadow-lg active:scale-95 transition-transform">
-              Submit
-            </Button>
-          </form>
-
-          <AnimatePresence>
-            {feedback && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="mb-4"
-              >
-                {feedback === 'correct' ? (
-                  <span className="inline-flex items-center gap-2 text-green-600 dark:text-green-400 text-lg font-black bg-green-50 dark:bg-green-950/50 px-4 py-2 rounded-xl">
-                    <CheckCircle size={20} /> Correct! +10
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-2 text-red-500 text-lg font-black bg-red-50 dark:bg-red-950/50 px-4 py-2 rounded-xl">
-                    ✗ Answer was {question.answer}
-                  </span>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div className="flex items-center justify-center gap-6">
-            <div className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-5 py-3">
-              <p className="text-xs font-bold tracking-widest text-black/40 dark:text-white/40 uppercase">Score</p>
-              <p className="text-2xl font-black">{score}</p>
-            </div>
-            <div className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-5 py-3">
-              <p className="text-xs font-bold tracking-widest text-black/40 dark:text-white/40 uppercase">Solved</p>
-              <p className="text-2xl font-black">{questionCount - 1}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
+import { processImage, processVideo } from '@/lib/api';
+import { Navbar } from '@/components/Navbar';
+import { MathGame } from '@/components/MathGame';
 
 export default function Home() {
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [actions, setActions] = useState<string[]>(["Compress"]);
@@ -350,18 +24,11 @@ export default function Home() {
   const [globalProgress, setGlobalProgress] = useState(0);
   const [results, setResults] = useState<{ file: File, url?: string, blob?: Blob, oldSize: number, newSize?: number, name: string, error?: string }[]>([]);
 
-  // QR Code state
-  const [qrTab, setQrTab] = useState<'generate' | 'scan'>('generate');
-  const [qrInput, setQrInput] = useState('');
-  const [qrFile, setQrFile] = useState<File | null>(null);
-  const [qrResult, setQrResult] = useState<{ blob?: Blob; text?: string; error?: string } | null>(null);
-  const [qrLoading, setQrLoading] = useState(false);
-
-  const headerRef = useRef(null);
+  const heroRef = useRef(null);
 
   useEffect(() => {
     setMounted(true);
-    gsap.fromTo(headerRef.current, { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 1, ease: 'power3.out' });
+    gsap.fromTo(heroRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 1.2, ease: 'power4.out', delay: 0.2 });
   }, []);
 
   const handleDrop = (e: React.DragEvent) => {
@@ -371,7 +38,6 @@ export default function Home() {
     }
   };
 
-  // ─── Parallel file processing for speed ───
   const handleProcess = async () => {
     setIsProcessing(true);
     setResults([]);
@@ -387,9 +53,7 @@ export default function Home() {
         let res;
         if (isVideo) {
           if (actions.includes("Compress")) {
-            res = await processVideo(file, videoCompLevel, (p) => {
-              // Individual progress is harder with parallel, just track completion
-            });
+            res = await processVideo(file, videoCompLevel, (p) => { });
             const blob = new Blob([res.data], { type: 'video/mp4' });
             return { file, blob, oldSize: file.size, newSize: blob.size, name: `compressed_${file.name}` };
           } else {
@@ -402,7 +66,6 @@ export default function Home() {
             return { file, url: res.data.url, oldSize: file.size, name: res.data.filename };
           } else {
             const blob = new Blob([res.data]);
-
             let finalExt = file.name.split('.').pop() || "jpg";
             const isBg = actions.includes("Remove Background") || actions.includes("All-in-One (BG + Compress + Convert)");
             const isConvert = actions.includes("Convert Format") || actions.includes("All-in-One (BG + Compress + Convert)");
@@ -420,15 +83,7 @@ export default function Home() {
         }
       } catch (e: any) {
         console.error(e);
-        let errMsg = "Processing failed. Check API.";
-        if (e.response?.data?.detail) {
-          errMsg = `API Error: ${e.response.data.detail}`;
-        }
-        if (e.response?.data?.trace) {
-          console.error("Backend Trace:", e.response.data.trace);
-          const lines = e.response.data.trace.trim().split('\n');
-          errMsg = lines[lines.length - 1].substring(0, 100);
-        }
+        let errMsg = "Processing failed.";
         return { file, oldSize: file.size, name: file.name, error: errMsg };
       } finally {
         completed++;
@@ -436,7 +91,6 @@ export default function Home() {
       }
     };
 
-    // Fire all requests in parallel
     const promises = files.map((file, i) => processOne(file, i));
     const settled = await Promise.allSettled(promises);
 
@@ -450,104 +104,43 @@ export default function Home() {
     setGlobalProgress(100);
   };
 
-  const handleGenerateQR = async () => {
-    setQrLoading(true);
-    setQrResult(null);
-    try {
-      const res = await generateQR(qrInput, qrFile || undefined);
-      const blob = new Blob([res.data], { type: 'image/png' });
-      setQrResult({ blob });
-    } catch (e: any) {
-      let errMsg = 'QR generation failed.';
-      if (e.response?.data) {
-        try {
-          const text = await e.response.data.text?.();
-          const parsed = JSON.parse(text);
-          errMsg = parsed.detail || errMsg;
-        } catch { /* ignore */ }
-      }
-      setQrResult({ error: errMsg });
-    }
-    setQrLoading(false);
-  };
-
-  const handleDecodeQR = async (file: File) => {
-    setQrLoading(true);
-    setQrResult(null);
-    try {
-      const res = await decodeQR(file);
-      setQrResult({ text: res.data.decoded_text });
-    } catch (e: any) {
-      let errMsg = 'QR decoding failed.';
-      if (e.response?.data?.detail) {
-        errMsg = e.response.data.detail;
-      }
-      setQrResult({ error: errMsg });
-    }
-    setQrLoading(false);
-  };
+  if (!mounted) return null;
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white font-sans selection:bg-black/10 dark:selection:bg-white/20 transition-colors duration-500">
-      <main className="max-w-6xl mx-auto px-6 py-12 lg:py-24">
+      <Navbar />
 
-        <header ref={headerRef} className="flex justify-between items-center mb-16 opacity-0">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-black dark:bg-white flex items-center justify-center text-white dark:text-black shadow-md">
-              <MonitorPlay size={24} />
-            </div>
-            <h1 className="text-2xl font-extrabold tracking-tight">Assestzen</h1>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {mounted && (
-              <Link href="/keep-alive">
-                <Button variant="outline" size="icon" title="Keep-Alive Service" className="rounded-full w-12 h-12 border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
-                  <Activity size={20} />
-                </Button>
-              </Link>
-            )}
-
-            {mounted && (
-              <Button variant="outline" size="icon" className="rounded-full w-12 h-12 border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 transition-colors" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-              </Button>
-            )}
-          </div>
-        </header>
-
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="mb-16">
-          <h2 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 leading-[1.1]">
-            Media optimization,<br />reimagined.
+      <main className="max-w-6xl mx-auto px-6 pt-32 pb-24 lg:pt-40">
+        <div ref={heroRef} className="mb-20">
+          <h2 className="text-6xl md:text-8xl font-black tracking-tighter mb-8 leading-[0.95]">
+            Media toolkit,<br />
+            <span className="text-black/20 dark:text-white/20">reimagined.</span>
           </h2>
           <p className="text-xl md:text-2xl text-black/60 dark:text-white/60 max-w-2xl leading-relaxed font-medium">
             The pristine toolkit to compress, convert, and cleanly strip backgrounds from your media autonomously.
           </p>
-        </motion.div>
+        </div>
 
-        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12">
-
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2, duration: 0.8 }} className="lg:col-span-4 space-y-6">
-            <Card className="border border-black/10 dark:border-white/10 shadow-xl bg-white dark:bg-black rounded-3xl overflow-hidden">
-              <CardContent className="p-8 space-y-8">
-
-                <div className="space-y-4">
-                  <label className="text-xs font-bold tracking-widest text-black/50 dark:text-white uppercase">Optimization Actions</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-16">
+          {/* Controls */}
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4, duration: 0.8 }} className="lg:col-span-4 space-y-8">
+            <Card className="border border-black/10 dark:border-white/10 shadow-2xl bg-white dark:bg-black rounded-[2.5rem] overflow-hidden">
+              <CardContent className="p-8 space-y-10">
+                <div className="space-y-6">
+                  <label className="text-xs font-black tracking-widest text-black/40 dark:text-white/40 uppercase ml-1">Optimization Layer</label>
+                  <div className="grid grid-cols-1 gap-3">
                     {["Compress", "Convert Format", "Remove Background", "Convert to URL"].map((a) => (
                       <Button
                         key={a}
                         variant="outline"
                         onClick={() =>
                           setActions(prev =>
-                            prev.includes(a)
-                              ? prev.filter(x => x !== a)
-                              : [...prev, a]
+                            prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]
                           )
                         }
-                        className={`h-12 text-xs font-bold tracking-wider transition-all border shadow-sm rounded-none ${actions.includes(a)
-                          ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-md'
-                          : 'border-black/20 dark:border-white/20 bg-transparent text-black/60 dark:text-white hover:bg-black/5 dark:hover:bg-white/10'
+                        className={`h-14 text-sm font-black tracking-wider transition-all border-2 rounded-2xl ${actions.includes(a)
+                          ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-xl'
+                          : 'border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/10'
                           }`}
                       >
                         {a}
@@ -557,34 +150,32 @@ export default function Home() {
                 </div>
 
                 <AnimatePresence mode="popLayout">
-                  {(actions.includes("Compress")) && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-6 overflow-hidden">
-                      <div className="space-y-4 pt-4 border-t border-black/10 dark:border-white/10">
-                        <div className="flex justify-between items-center">
-                          <label className="text-xs font-bold tracking-widest text-black/50 dark:text-white/50 uppercase">Image Target (KB)</label>
-                          <span className="text-sm font-bold bg-black/5 dark:bg-white/10 px-3 py-1 rounded-full">{targetSizeKb} KB</span>
+                  {actions.includes("Compress") && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-8 overflow-hidden pt-4 border-t border-black/5 dark:border-white/5">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center px-1">
+                          <label className="text-xs font-black tracking-widest text-black/40 dark:text-white/40 uppercase">Target Density</label>
+                          <span className="text-sm font-black bg-black dark:bg-white text-white dark:text-black px-3 py-1 rounded-full shadow-lg">{targetSizeKb}KB</span>
                         </div>
-                        <div className="pt-2 pb-4">
-                          <input
-                            type="range"
-                            min={1}
-                            max={500}
-                            value={targetSizeKb}
-                            onChange={(e) => setTargetSizeKb(parseInt(e.target.value))}
-                            className="w-full h-2 bg-black/10 dark:bg-white/20 rounded-lg appearance-none cursor-pointer accent-black dark:accent-white"
-                          />
-                        </div>
+                        <input
+                          type="range"
+                          min={1}
+                          max={500}
+                          value={targetSizeKb}
+                          onChange={(e) => setTargetSizeKb(parseInt(e.target.value))}
+                          className="w-full h-2.5 bg-black/5 dark:bg-white/10 rounded-full appearance-none cursor-pointer accent-black dark:accent-white"
+                        />
                       </div>
-                      <div className="space-y-4 pt-4 border-t border-black/10 dark:border-white/10">
-                        <label className="text-xs font-bold tracking-widest text-black/50 dark:text-white/50 uppercase">Video Encoding</label>
+                      <div className="space-y-4">
+                        <label className="text-xs font-black tracking-widest text-black/40 dark:text-white/40 uppercase ml-1">Video Precision</label>
                         <Select value={videoCompLevel} onValueChange={(v) => v && setVideoCompLevel(v)}>
-                          <SelectTrigger className="w-full h-12 bg-transparent rounded-xl border-black/20 dark:border-white/20 focus:ring-black dark:focus:ring-white">
+                          <SelectTrigger className="w-full h-14 bg-black/[0.02] dark:bg-white/[0.02] rounded-2xl border-2 border-black/5 dark:border-white/5 font-bold">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="rounded-xl border-black/10 dark:border-white/10 bg-white dark:bg-black text-black dark:text-white">
-                            <SelectItem value="Low">Low (CRF 28, Fast)</SelectItem>
+                          <SelectContent className="rounded-2xl border-black/10 dark:border-white/10 bg-white dark:bg-black">
+                            <SelectItem value="Low">Low (CRF 28)</SelectItem>
                             <SelectItem value="Medium">Medium (CRF 23)</SelectItem>
-                            <SelectItem value="High">High (CRF 18, Slower)</SelectItem>
+                            <SelectItem value="High">High (CRF 18)</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -592,18 +183,16 @@ export default function Home() {
                   )}
                 </AnimatePresence>
 
-                <div className="space-y-4 pt-4 border-t border-black/10 dark:border-white/10">
-                  <label className="text-xs font-bold tracking-widest text-black/50 dark:text-white/50 uppercase">Image Output</label>
+                <div className="space-y-4 pt-4 border-t border-black/5 dark:border-white/5">
+                  <label className="text-xs font-black tracking-widest text-black/40 dark:text-white/40 uppercase ml-1">Export Format</label>
                   <Select value={targetFormat} onValueChange={(v) => v && setTargetFormat(v)} disabled={!actions.includes("Convert Format")}>
-                    <SelectTrigger className="w-full h-12 bg-transparent rounded-xl border-black/20 dark:border-white/20 focus:ring-black dark:focus:ring-white">
+                    <SelectTrigger className="w-full h-14 bg-black/[0.02] dark:bg-white/[0.02] rounded-2xl border-2 border-black/5 dark:border-white/5 font-bold">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-black/10 dark:border-white/10 bg-white dark:bg-black text-black dark:text-white">
-                      <SelectItem value="Original">Original</SelectItem>
-                      <SelectItem value="WebP">WebP</SelectItem>
-                      <SelectItem value="AVIF">AVIF</SelectItem>
-                      <SelectItem value="PNG">PNG</SelectItem>
-                      <SelectItem value="JPG">JPG</SelectItem>
+                    <SelectContent className="rounded-2xl border-black/10 dark:border-white/10 bg-white dark:bg-black">
+                      {["Original", "WebP", "AVIF", "PNG", "JPG"].map(f => (
+                        <SelectItem key={f} value={f}>{f}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -611,32 +200,30 @@ export default function Home() {
             </Card>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3, duration: 0.8 }} className="lg:col-span-8 flex flex-col gap-6">
-
+          {/* Upload & Results */}
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5, duration: 0.8 }} className="lg:col-span-8 flex flex-col gap-8">
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               onClick={() => document.getElementById('hidden-file-input')?.click()}
-              className="relative group border-2 border-dashed border-black/20 dark:border-white/20 rounded-[2rem] bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-500 p-12 text-center flex flex-col items-center justify-center min-h-[380px] cursor-pointer"
+              className="relative group border-2 border-dashed border-black/10 dark:border-white/10 rounded-[3rem] bg-black/[0.01] dark:bg-white/[0.01] hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-all duration-700 p-16 text-center flex flex-col items-center justify-center min-h-[450px] cursor-pointer shadow-inner"
             >
               <input id="hidden-file-input" type="file" multiple className="hidden" onChange={(e) => e.target.files && setFiles(prev => [...prev, ...Array.from(e.target.files!)])} />
 
-              <div className="w-24 h-24 rounded-3xl bg-black dark:bg-white shadow-xl flex items-center justify-center mb-8 group-hover:-translate-y-3 transition-transform duration-500 border border-black/10 dark:border-white/10">
-                <UploadCloud className="w-10 h-10 text-white dark:text-black" />
+              <div className="w-28 h-28 rounded-[2.5rem] bg-black dark:bg-white shadow-2xl flex items-center justify-center mb-10 group-hover:-translate-y-5 transition-transform duration-700">
+                <UploadCloud className="w-12 h-12 text-white dark:text-black" />
               </div>
 
-              <h3 className="text-2xl font-bold mb-3">Drop your files here</h3>
-              <p className="text-black/50 dark:text-white/50 font-medium text-lg max-w-sm">Images & MP4 Videos automatically parsed and queued.</p>
+              <h3 className="text-3xl font-black mb-4">Ingest Media</h3>
+              <p className="text-black/40 dark:text-white/40 font-bold text-xl max-w-sm">Images & MP4 Videos automatically queued.</p>
 
               {files.length > 0 && (
-                <div className="mt-10 flex flex-wrap gap-3 justify-center px-4 w-full">
+                <div className="mt-12 flex flex-wrap gap-3 justify-center px-4 w-full">
                   {files.map((f, i) => (
-                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} key={i} className="px-5 py-3 pr-4 bg-white dark:bg-black shadow-sm border border-black/10 dark:border-white/10 rounded-xl text-sm font-semibold inline-flex items-center gap-3 relative z-10 transition-transform hover:scale-105">
-                      {f.type.startsWith('video') ? <Video strokeWidth={2.5} size={18} /> : <ImageIcon strokeWidth={2.5} size={18} />}
-                      <span className="truncate max-w-[140px] tracking-tight">{f.name}</span>
-                      <div className="w-[1px] h-4 bg-black/10 dark:bg-white/10 mx-1" />
-                      <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setFiles(files.filter((_, idx) => idx !== i)); }} className="text-black/40 dark:text-white/40 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10">
-                        <Trash2 size={16} />
+                    <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} key={i} className="px-6 py-4 bg-white dark:bg-black shadow-xl border border-black/5 dark:border-white/5 rounded-2xl text-sm font-black flex items-center gap-4 hover:scale-105 transition-transform">
+                      <span className="truncate max-w-[180px]">{f.name}</span>
+                      <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setFiles(files.filter((_, idx) => idx !== i)); }} className="text-black/20 dark:text-white/20 hover:text-red-500 transition-colors">
+                        <Trash2 size={18} />
                       </button>
                     </motion.div>
                   ))}
@@ -644,20 +231,23 @@ export default function Home() {
               )}
             </div>
 
-            <Button size="lg" disabled={files.length === 0 || isProcessing} onClick={handleProcess} className="w-full h-20 text-xl font-bold rounded-[1.5rem] bg-black dark:bg-white hover:bg-black/80 dark:hover:bg-white/80 text-white dark:text-black shadow-2xl active:scale-[0.98] transition-all relative overflow-hidden group border border-transparent">
-              <span className="relative z-10 flex items-center justify-center tracking-wide">
-                {isProcessing ? <><Loader2 className="mr-3 h-6 w-6 animate-spin" /> Generating Magic ({Math.round(globalProgress)}%)</> : "✨ Ignite Engine"}
+            <Button size="lg" disabled={files.length === 0 || isProcessing} onClick={handleProcess} className="w-full h-24 text-2xl font-black rounded-[2rem] bg-black dark:bg-white hover:opacity-90 text-white dark:text-black shadow-2xl active:scale-[0.98] transition-all relative overflow-hidden group">
+              <span className="relative z-10 flex items-center justify-center tracking-tighter">
+                {isProcessing ? <><Loader2 className="mr-4 h-8 w-8 animate-spin" /> Engine Running ({Math.round(globalProgress)}%)</> : "Ignite Optimization Engine"}
               </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 dark:from-black/0 dark:via-black/20 dark:to-black/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
             </Button>
 
-            {/* ─── Loading: Progress + Mini-Game ─── */}
+            {/* Results */}
             <AnimatePresence>
               {isProcessing && (
-                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
-                  <div className="space-y-4 py-6 px-6 bg-white dark:bg-black rounded-3xl shadow-sm border border-black/10 dark:border-white/10">
-                    <div className="flex justify-between text-sm font-bold tracking-widest uppercase text-black/60 dark:text-white/60"><span>Processing {files.length} file{files.length > 1 ? 's' : ''} in parallel...</span><span>{Math.round(globalProgress)}%</span></div>
-                    <Progress value={globalProgress} className="h-4 bg-black/10 dark:bg-white/10 rounded-full [&>div]:bg-black dark:[&>div]:bg-white" />
+                <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }} className="space-y-8">
+                  <div className="p-8 bg-black/[0.02] dark:bg-white/[0.02] rounded-[2.5rem] border-2 border-black/5 dark:border-white/5">
+                    <div className="flex justify-between text-sm font-black tracking-widest uppercase mb-4 text-black/40 dark:text-white/40">
+                      <span>Syncing {files.length} Assets</span>
+                      <span>{Math.round(globalProgress)}%</span>
+                    </div>
+                    <Progress value={globalProgress} className="h-4 bg-black/5 dark:bg-white/10 rounded-full [&>div]:bg-black dark:[&>div]:bg-white shadow-inner" />
                   </div>
                   <MathGame />
                 </motion.div>
@@ -665,275 +255,46 @@ export default function Home() {
             </AnimatePresence>
 
             {results.length > 0 && (
-              <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 mt-6">
-                <h3 className="text-3xl font-black tracking-tight mb-8">Optimization Results</h3>
-                <div className="grid gap-5">
+              <div className="space-y-8 mt-4">
+                <h3 className="text-4xl font-black tracking-tighter">Output Assets</h3>
+                <div className="grid gap-6">
                   {results.map((res, i) => (
                     <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }}>
-                      <Card className="overflow-hidden border border-black/10 dark:border-white/10 shadow-xl bg-white dark:bg-black rounded-2xl hover:border-black/30 dark:hover:border-white/30 transition-colors text-black dark:text-white">
-                        <div className="flex flex-col p-6 gap-6">
-                          <div className="flex flex-col sm:flex-row items-center gap-6">
-                            <div className={`w-16 h-16 shrink-0 rounded-2xl flex items-center justify-center shadow-inner ${res.error ? 'bg-black/5 dark:bg-white/10 text-red-500 border border-black/10 dark:border-white/10' : 'bg-black dark:bg-white text-white dark:text-black border border-black/10 dark:border-white/10 overflow-hidden'}`}>
-                              {res.error ? <Trash2 size={24} /> : ((res.blob || res.url) && !res.file.type.startsWith('video') ? <img src={res.blob ? window.URL.createObjectURL(res.blob) : res.url!} className="w-full h-full object-cover" alt="thumb" /> : <CheckCircle size={28} className="drop-shadow-sm" />)}
-                            </div>
-                            <div className="flex-1 min-w-0 text-center sm:text-left">
-                              <p className="font-extrabold text-lg truncate mb-2">{res.name}</p>
-                              {res.error ? (
-                                <p className="text-sm text-red-500 font-bold bg-red-50 dark:bg-red-950/50 inline-block px-3 py-1 rounded-lg">{res.error}</p>
-                              ) : (
-                                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-sm font-semibold">
-                                  <span className="bg-black/5 dark:bg-white/10 text-black/70 dark:text-white/70 px-3 py-1.5 rounded-lg border border-black/10 dark:border-white/10">{(res.oldSize / 1024).toFixed(1)} KB</span>
-                                  {res.newSize && (
-                                    <>
-                                      <span className="text-black/30 dark:text-white/30">→</span>
-                                      <span className="bg-black/10 dark:bg-white/20 text-black dark:text-white px-3 py-1.5 rounded-lg border border-black/10 dark:border-white/10">{(res.newSize / 1024).toFixed(1)} KB</span>
-                                      <span className="bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 rounded-lg text-xs font-black shadow-md tracking-wider">
-                                        -{(100 - (res.newSize / res.oldSize) * 100).toFixed(1)}%
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex gap-3 w-full sm:w-auto shrink-0 mt-6 sm:mt-0">
-                              {res.url ? (
-                                <Button size="lg" className="w-full sm:w-auto rounded-xl font-bold bg-white dark:bg-black border border-black/20 dark:border-white/20 text-black dark:text-white shadow-sm hover:bg-black/5 dark:hover:bg-white/10" onClick={() => { navigator.clipboard.writeText(res.url!); alert("URL Copied to clipboard!"); }}>
-                                  <LinkIcon size={18} className="mr-2" /> Copy URL
-                                </Button>
-                              ) : res.blob ? (
-                                <Button size="lg" className="w-full sm:w-auto rounded-xl font-bold shadow-md bg-black hover:bg-black/80 text-white dark:bg-white dark:text-black dark:hover:bg-white/90" onClick={() => {
-                                  const url = window.URL.createObjectURL(res.blob!);
-                                  const a = document.createElement('a');
-                                  a.href = url;
-                                  a.download = res.name;
-                                  a.click();
-                                }}>
-                                  <Download size={18} className="mr-2" /> Download
-                                </Button>
-                              ) : null}
+                      <Card className="p-8 border border-black/10 dark:border-white/10 shadow-2xl bg-white dark:bg-black rounded-[2rem] hover:border-black dark:hover:border-white transition-all group">
+                        <div className="flex flex-col md:flex-row items-center gap-8">
+                          <div className="w-20 h-20 shrink-0 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center overflow-hidden">
+                            {(res.blob || res.url) && !res.file.type.startsWith('video') ? <img src={res.blob ? URL.createObjectURL(res.blob) : res.url!} className="w-full h-full object-cover" alt="thumb" /> : <CheckCircle size={32} className="text-black/20 dark:text-white/20" />}
+                          </div>
+                          <div className="flex-1 min-w-0 text-center md:text-left">
+                            <p className="font-black text-xl truncate mb-3">{res.name}</p>
+                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                              <span className="bg-black/5 dark:bg-white/5 px-4 py-1.5 rounded-xl text-xs font-bold border border-black/5 dark:border-white/5">{(res.oldSize / 1024).toFixed(1)}KB</span>
+                              {res.newSize && <><span className="text-black/20">→</span><span className="bg-black dark:bg-white text-white dark:text-black px-4 py-1.5 rounded-xl text-xs font-black">{(res.newSize / 1024).toFixed(1)}KB</span></>}
                             </div>
                           </div>
-                          {(res.blob || res.url) && !res.file.type.startsWith('video') && (
-                            <div className="w-full flex justify-center bg-black/5 dark:bg-white/5 rounded-xl p-4 mt-2 border border-black/10 dark:border-white/10 relative group">
-                              <img src={res.blob ? window.URL.createObjectURL(res.blob!) : res.url!} alt="Processed preview" className="max-h-96 object-contain rounded-lg shadow-sm" />
-                            </div>
-                          )}
+                          <div className="shrink-0 flex gap-4 w-full md:w-auto">
+                            {res.blob ? (
+                              <Button size="lg" className="flex-1 md:flex-none h-14 px-8 rounded-2xl font-black bg-black dark:bg-white text-white dark:text-black shadow-xl" onClick={() => {
+                                const url = URL.createObjectURL(res.blob!);
+                                const a = document.createElement('a'); a.href = url; a.download = res.name; a.click();
+                              }}>
+                                <Download className="mr-2" size={20} /> Export
+                              </Button>
+                            ) : res.url && (
+                              <Button variant="outline" size="lg" className="flex-1 md:flex-none h-14 px-8 rounded-2xl font-black border-2 border-black/10" onClick={() => { navigator.clipboard.writeText(res.url!); alert("URL Copied!"); }}>
+                                <LinkIcon className="mr-2" size={20} /> Copy URL
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </Card>
                     </motion.div>
                   ))}
                 </div>
-              </motion.div>
+              </div>
             )}
-
           </motion.div>
         </div>
-
-        {/* ─── QR Code Tools Section ─── */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="mt-20"
-        >
-          <div className="flex items-center gap-4 mb-10">
-            <div className="w-14 h-14 rounded-2xl bg-black dark:bg-white flex items-center justify-center shadow-lg">
-              <QrCode className="w-7 h-7 text-white dark:text-black" />
-            </div>
-            <div>
-              <h2 className="text-3xl md:text-4xl font-black tracking-tight">QR Code Tools</h2>
-              <p className="text-black/50 dark:text-white/50 font-medium mt-1">Generate or scan QR codes instantly.</p>
-            </div>
-          </div>
-
-          <Card className="border border-black/10 dark:border-white/10 shadow-xl bg-white dark:bg-black rounded-3xl overflow-hidden">
-            <CardContent className="p-0">
-              {/* Tabs */}
-              <div className="flex border-b border-black/10 dark:border-white/10">
-                <button
-                  onClick={() => { setQrTab('generate'); setQrResult(null); }}
-                  className={`flex-1 flex items-center justify-center gap-2.5 py-5 text-sm font-bold tracking-widest uppercase transition-all ${qrTab === 'generate'
-                    ? 'bg-black text-white dark:bg-white dark:text-black'
-                    : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'
-                    }`}
-                >
-                  <QrCode size={18} /> Generate QR
-                </button>
-                <button
-                  onClick={() => { setQrTab('scan'); setQrResult(null); }}
-                  className={`flex-1 flex items-center justify-center gap-2.5 py-5 text-sm font-bold tracking-widest uppercase transition-all ${qrTab === 'scan'
-                    ? 'bg-black text-white dark:bg-white dark:text-black'
-                    : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'
-                    }`}
-                >
-                  <ScanLine size={18} /> Scan QR
-                </button>
-              </div>
-
-              <div className="p-8">
-                <AnimatePresence mode="wait">
-                  {qrTab === 'generate' ? (
-                    <motion.div key="generate" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
-                      <div className="space-y-3">
-                        <label className="text-xs font-bold tracking-widest text-black/50 dark:text-white/50 uppercase">Text or URL</label>
-                        <input
-                          type="text"
-                          value={qrInput}
-                          onChange={(e) => setQrInput(e.target.value)}
-                          placeholder="https://example.com or any text..."
-                          className="w-full h-14 px-5 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl text-base font-medium placeholder:text-black/30 dark:placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20 transition-all"
-                        />
-                      </div>
-
-                      <div className="space-y-3">
-                        <label className="text-xs font-bold tracking-widest text-black/50 dark:text-white/50 uppercase">Or upload an image (will host & encode URL)</label>
-                        <div
-                          onClick={() => document.getElementById('qr-file-input')?.click()}
-                          className="border-2 border-dashed border-black/15 dark:border-white/15 rounded-xl p-6 text-center cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-                        >
-                          <input
-                            id="qr-file-input"
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => e.target.files?.[0] && setQrFile(e.target.files[0])}
-                          />
-                          {qrFile ? (
-                            <div className="flex items-center justify-center gap-3">
-                              <ImageIcon size={20} className="text-black/60 dark:text-white/60" />
-                              <span className="font-semibold truncate max-w-[200px]">{qrFile.name}</span>
-                              <button onClick={(e) => { e.stopPropagation(); setQrFile(null); }} className="text-black/40 dark:text-white/40 hover:text-red-500 transition-colors">
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          ) : (
-                            <p className="text-black/40 dark:text-white/40 font-medium">Click to select an image</p>
-                          )}
-                        </div>
-                      </div>
-
-                      <Button
-                        size="lg"
-                        disabled={(!qrInput && !qrFile) || qrLoading}
-                        onClick={handleGenerateQR}
-                        className="w-full h-16 text-lg font-bold rounded-xl bg-black dark:bg-white hover:bg-black/80 dark:hover:bg-white/80 text-white dark:text-black shadow-xl active:scale-[0.98] transition-all"
-                      >
-                        {qrLoading ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating...</> : <><QrCode className="mr-2" size={20} /> Generate QR Code</>}
-                      </Button>
-                    </motion.div>
-                  ) : (
-                    <motion.div key="scan" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                      <div className="space-y-3">
-                        <label className="text-xs font-bold tracking-widest text-black/50 dark:text-white/50 uppercase">Upload a QR Code Image</label>
-                        <div
-                          onClick={() => document.getElementById('qr-scan-input')?.click()}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            if (e.dataTransfer.files?.[0]) handleDecodeQR(e.dataTransfer.files[0]);
-                          }}
-                          className="border-2 border-dashed border-black/15 dark:border-white/15 rounded-xl p-12 text-center cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex flex-col items-center justify-center min-h-[200px]"
-                        >
-                          <input
-                            id="qr-scan-input"
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => e.target.files?.[0] && handleDecodeQR(e.target.files[0])}
-                          />
-                          <div className="w-16 h-16 rounded-2xl bg-black/5 dark:bg-white/10 flex items-center justify-center mb-4">
-                            <ScanLine className="w-8 h-8 text-black/40 dark:text-white/40" />
-                          </div>
-                          <p className="text-black/60 dark:text-white/60 font-semibold">Drop or click to scan a QR code</p>
-                          <p className="text-black/30 dark:text-white/30 text-sm mt-1">Supports PNG, JPG, WEBP</p>
-                        </div>
-                      </div>
-                      {qrLoading && (
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-center gap-3 py-2">
-                            <Loader2 className="h-5 w-5 animate-spin text-black/50 dark:text-white/50" />
-                            <span className="text-sm font-bold text-black/50 dark:text-white/50 tracking-widest uppercase">Decoding...</span>
-                          </div>
-                          <MathGame compact />
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* QR loading with mini-game for generate tab */}
-                <AnimatePresence>
-                  {qrLoading && qrTab === 'generate' && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="mt-6 pt-6 border-t border-black/10 dark:border-white/10">
-                      <MathGame compact />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* QR Result */}
-                <AnimatePresence>
-                  {qrResult && (
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="mt-8 pt-8 border-t border-black/10 dark:border-white/10">
-                      {qrResult.error ? (
-                        <div className="text-center py-6">
-                          <p className="text-red-500 font-bold text-sm bg-red-50 dark:bg-red-950/50 inline-block px-4 py-2 rounded-lg">{qrResult.error}</p>
-                        </div>
-                      ) : qrResult.blob ? (
-                        <div className="flex flex-col items-center gap-6">
-                          <div className="bg-white p-6 rounded-2xl shadow-sm border border-black/10 dark:border-white/10">
-                            <img
-                              src={URL.createObjectURL(qrResult.blob)}
-                              alt="Generated QR Code"
-                              className="w-64 h-64 object-contain"
-                            />
-                          </div>
-                          <Button
-                            size="lg"
-                            className="rounded-xl font-bold shadow-md bg-black hover:bg-black/80 text-white dark:bg-white dark:text-black dark:hover:bg-white/90"
-                            onClick={() => {
-                              const url = URL.createObjectURL(qrResult.blob!);
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = 'qrcode.png';
-                              a.click();
-                            }}
-                          >
-                            <Download size={18} className="mr-2" /> Download QR Code
-                          </Button>
-                        </div>
-                      ) : qrResult.text ? (
-                        <div className="flex flex-col items-center gap-5">
-                          <div className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl p-5">
-                            <p className="text-xs font-bold tracking-widest text-black/40 dark:text-white/40 uppercase mb-3">Decoded Content</p>
-                            <p className="text-lg font-semibold break-all leading-relaxed">{qrResult.text}</p>
-                          </div>
-                          <div className="flex gap-3">
-                            <Button
-                              variant="outline"
-                              className="rounded-xl font-bold border-black/20 dark:border-white/20 hover:bg-black/5 dark:hover:bg-white/10"
-                              onClick={() => { navigator.clipboard.writeText(qrResult.text!); alert('Copied to clipboard!'); }}
-                            >
-                              <Copy size={16} className="mr-2" /> Copy Text
-                            </Button>
-                            {(qrResult.text.startsWith('http://') || qrResult.text.startsWith('https://')) && (
-                              <Button
-                                variant="outline"
-                                className="rounded-xl font-bold border-black/20 dark:border-white/20 hover:bg-black/5 dark:hover:bg-white/10"
-                                onClick={() => window.open(qrResult.text!, '_blank')}
-                              >
-                                <ExternalLink size={16} className="mr-2" /> Open Link
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ) : null}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
       </main>
     </div>
   );
